@@ -1,0 +1,7 @@
+@extends('layouts.app')
+@section('title','SHU')
+@section('content')
+<div class="page-heading"><div><p class="eyebrow">SISA HASIL USAHA</p><h1>Simulasi SHU 2026</h1><p>Contoh UI pembagian SHU. Rumus final harus mengikuti AD/ART dan keputusan RAT koperasi.</p></div><button class="btn btn-primary">Hitung Simulasi</button></div>
+<div class="shu-hero"><div><span>Estimasi SHU Berjalan</span><strong>Rp 418.200.000</strong><p>Data demo s.d. September 2026</p></div><div class="shu-ring"><div><strong>68%</strong><span>Target tahunan</span></div></div></div>
+<div class="detail-grid"><section class="card"><div class="card-head"><div><h2>Parameter Pembagian</h2><p>Contoh konfigurasi persentase</p></div></div><div class="parameter-list">@foreach([['Cadangan Koperasi',25],['Jasa Modal Anggota',20],['Jasa Usaha Anggota',30],['Pengurus & Pengawas',10],['Dana Pendidikan & Sosial',15]] as $p)<div><span>{{ $p[0] }}</span><div class="parameter-bar"><i style="width:{{ $p[1]*2.5 }}%"></i></div><strong>{{ $p[1] }}%</strong></div>@endforeach</div></section><section class="card"><div class="card-head"><div><h2>Pratinjau Distribusi</h2><p>Berdasarkan parameter demo</p></div></div><div class="distribution"><div><span>Cadangan</span><strong>Rp 104.550.000</strong></div><div><span>Jasa Modal</span><strong>Rp 83.640.000</strong></div><div><span>Jasa Usaha</span><strong>Rp 125.460.000</strong></div><div><span>Lainnya</span><strong>Rp 104.550.000</strong></div></div></section></div>
+@endsection
