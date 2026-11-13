@@ -13,7 +13,8 @@ return [
     'cookie' => env('SESSION_COOKIE', 'koperasi_one_session'),
     'path' => '/',
     'domain' => env('SESSION_DOMAIN'),
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Cookie sesi hanya lewat HTTPS di production (hosting punya SSL); lokal tetap http.
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
     'http_only' => true,
     'same_site' => 'lax',
     'partitioned' => false,

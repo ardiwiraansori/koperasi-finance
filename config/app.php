@@ -10,6 +10,9 @@ return [
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
     'faker_locale' => env('APP_FAKER_LOCALE', 'id_ID'),
     'cipher' => 'AES-256-CBC',
+    // Akun admin awal untuk db:seed (dibaca lewat config agar tetap jalan saat config di-cache).
+    'admin_email' => env('ADMIN_EMAIL', 'admin@koperasi.test'),
+    'admin_password' => env('ADMIN_PASSWORD'),
     'key' => env('APP_KEY'),
     'previous_keys' => [...array_filter(explode(',', (string) env('APP_PREVIOUS_KEYS', '')))],
     'maintenance' => [

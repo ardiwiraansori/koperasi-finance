@@ -25,6 +25,15 @@ echo [2/4] Memastikan APP_KEY...
 findstr /C:"APP_KEY=base64:" .env >nul 2>nul
 if errorlevel 1 php artisan key:generate --force || exit /b 1
 
+echo.
+echo [PERINGATAN] Langkah berikut MENGHAPUS SEMUA DATA di database (anggota, simpanan, pinjaman, jurnal)
+echo              lalu mengisi ulang dengan data demo. Jangan jalankan ini bila sudah ada data nyata.
+set /p OK=Ketik HAPUS lalu Enter untuk melanjutkan, atau tutup jendela ini:
+if /i not "%OK%"=="HAPUS" (
+  echo Dibatalkan. Data tidak diubah.
+  exit /b 1
+)
+
 echo [3/4] Migration dan seeder demo...
 php artisan migrate:fresh --seed || exit /b 1
 

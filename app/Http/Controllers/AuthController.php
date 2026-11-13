@@ -1,0 +1,38 @@
+<?php
+namespace App\Http\Controllers;
+
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
+
+class AuthController extends Controller
+{
+    public function create(): View
+    {
+        return view('auth.login');
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate(['email' => ['required', 'string', 'max:255'], 'password' => ['required']]);
+        $login = strtolower(trim($request->input('email')));
+        // Anggota masuk dengan nomor anggota (AG000128); akunnya disimpan dengan email internal ag000128@anggota.local.
+        $credentials = ['email' => preg_match('/^ag\d+$/', $login) ? $login.'@anggota.local' : $login, 'password' => $request->input('password')];
+
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            return back()->withErrors(['email' => 'Email atau kata sandi salah.'])->onlyInput('email');
+        }
+
+        $request->session()->regenerate();
+        return redirect()->intended(route('dashboard'));
+    }
+
+    public function destroy(Request $request): RedirectResponse
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('login');
+    }
+}
