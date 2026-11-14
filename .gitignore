@@ -28,3 +28,8 @@ yarn-error.log
 !/storage/framework/views/.gitignore
 # Added by code-review-graph
 .code-review-graph/
+
+# Alat bantu lokal (Claude Code)
+/.claude/
+/.mcp.json
+/CLAUDE.md
