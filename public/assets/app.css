@@ -133,3 +133,4 @@ button,.btn,.nav-item,.icon-btn,.row-action{-webkit-tap-highlight-color:transpar
 .portal-trx{display:flex;justify-content:space-between;gap:12px;padding:12px 18px;border-top:1px solid #f0f3f6}.portal-trx strong{font-size:14px;display:block}.portal-trx small{font-size:12px;color:#526277}.portal-trx>strong{white-space:nowrap}
 .portal-login{border:2px solid #2563eb;background:#eff6ff;padding:16px 18px;margin-bottom:14px}.portal-login code{font-size:20px;font-weight:800;letter-spacing:.06em;user-select:all}
 @media (max-width:640px){.portal .member-kpis{grid-template-columns:1fr}}
+.brand-logo{width:44px;height:44px;border-radius:50%;background:#fff;flex:0 0 auto}.branch-switch img{flex:0 0 auto}

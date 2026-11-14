@@ -156,7 +156,7 @@ class RolesTest extends TestCase
     public function test_settings_mode_and_name(): void
     {
         $this->as('admin');
-        $this->get('/pengaturan')->assertOk()->assertSee('Tanpa akuntan')->assertSee('Koperasi Maju Bersama');
+        $this->get('/pengaturan')->assertOk()->assertSee('Tanpa akuntan')->assertSee('Koperasi Mutiara Tigo Pasie');
 
         $this->put('/pengaturan', ['koperasi_name' => 'Koperasi Sejahtera', 'has_accountant' => '1'])->assertSessionHasNoErrors();
         $this->assertTrue(Setting::hasAccountant());

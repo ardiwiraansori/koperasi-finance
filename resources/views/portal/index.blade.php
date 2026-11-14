@@ -11,7 +11,7 @@
 @php($rp = fn ($n) => 'Rp '.number_format($n, 0, ',', '.'))
 @php($dash = fn ($x) => filled($x) ? e($x) : '<span class="muted">—</span>')
 <header class="portal-top">
-    <div class="branch-switch"><span class="dot" aria-hidden="true"></span> {{ \App\Models\Setting::cooperativeName() }}</div>
+    <div class="branch-switch"><img src="{{ asset('icon-192.png') }}" alt="" width="36" height="36" style="border-radius:50%"> {{ \App\Models\Setting::cooperativeName() }}</div>
     <form method="POST" action="{{ route('logout') }}">@csrf<button class="btn btn-primary" type="submit">Keluar</button></form>
 </header>
 <main class="portal" id="main">

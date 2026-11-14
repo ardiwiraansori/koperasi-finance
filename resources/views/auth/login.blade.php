@@ -10,7 +10,8 @@
 <body>
 <main style="min-height:100vh;display:grid;place-items:center;padding:18px">
     <div class="card transaction-form" style="width:100%;max-width:380px;padding:8px 0">
-        <div class="card-head"><div><h2>Masuk ke {{ config('app.name') }}</h2><p>Pengurus: email. Anggota: nomor anggota (contoh AG000128).</p></div></div>
+        <div style="text-align:center;padding:18px 0 4px"><img src="{{ asset('icon-192.png') }}" alt="" width="96" height="96"></div>
+        <div class="card-head"><div><h2>Masuk ke {{ \App\Models\Setting::cooperativeName() }}</h2><p>Pengurus: email. Anggota: nomor anggota (contoh AG000128).</p></div></div>
         <form method="POST" action="{{ route('login.store') }}">
             @csrf
             @if($errors->any())<div class="alert danger">{{ $errors->first() }}</div>@endif

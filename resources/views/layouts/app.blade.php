@@ -16,8 +16,8 @@
     <aside class="sidebar" id="sidebar">
         <button class="sidebar-close" type="button" data-nav-close aria-label="Tutup menu"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
         <div class="brand">
-            <div class="brand-mark">K</div>
-            <div><strong>Koperasi One</strong><span>Finance Suite</span></div>
+            <img class="brand-logo" src="{{ asset('icon-192.png') }}" alt="" width="44" height="44">
+            <div><strong>{{ \App\Models\Setting::cooperativeName() }}</strong><span>Aplikasi Simpan Pinjam</span></div>
         </div>
         @php($u = auth()->user())
         @php($nav = fn (string $pattern) => request()->routeIs($pattern) ? 'active' : '')

@@ -30,5 +30,5 @@ class Setting extends Model
     // Koperasi punya akuntan? Bawaan: tidak, supaya kasir dan pengurus bisa bekerja tanpa istilah akuntansi.
     public static function hasAccountant(): bool { return self::get('has_accountant', '0') === '1'; }
 
-    public static function cooperativeName(): string { return self::get('koperasi_name') ?: 'Koperasi Maju Bersama'; }
+    public static function cooperativeName(): string { return self::get('koperasi_name') ?: 'Koperasi Mutiara Tigo Pasie'; }
 }
