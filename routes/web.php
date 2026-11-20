@@ -89,6 +89,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/laporan', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/laporan/neraca', [ReportController::class, 'balanceSheet'])->name('reports.balance');
         Route::get('/laporan/laba-rugi', [ReportController::class, 'incomeStatement'])->name('reports.income');
+        Route::get('/laporan/arus-kas', [ReportController::class, 'cashFlow'])->name('reports.cashflow');
         Route::get('/shu', [ShuController::class, 'index'])->name('shu.index');
     });
     Route::middleware('ability:types.edit')->group(function () {

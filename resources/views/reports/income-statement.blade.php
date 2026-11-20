@@ -3,17 +3,10 @@
 @section('content')
 @php($rp = fn ($n) => ($n < -0.004 ? '(' : '').'Rp '.number_format(abs($n), 0, ',', '.').($n < -0.004 ? ')' : ''))
 @php($d = fn ($s) => \Carbon\Carbon::parse($s)->format('d M Y'))
-@php($presets = ['Bulan ini' => [now()->startOfMonth(), now()], 'Tahun ini' => [now()->startOfYear(), now()], 'Tahun lalu' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()]])
 <div class="page-heading"><div><p class="eyebrow">LAPORAN KEUANGAN</p><h1>Laba Rugi</h1><p>Pendapatan dan beban pada satu periode; selisihnya adalah Sisa Hasil Usaha (SHU) sebelum pajak.</p></div>
 <div class="heading-actions no-print"><a class="btn btn-light" href="{{ route('reports.income', array_merge(request()->query(), ['export' => 1])) }}">↓ Export CSV</a><button class="btn btn-primary" type="button" onclick="window.print()">Cetak</button></div></div>
 
-<form method="get" action="{{ route('reports.income') }}" class="card no-print" style="margin-bottom:14px"><div class="toolbar">
-<label style="font-size:13px;color:#64748b">Dari <input type="date" name="dari" value="{{ $from }}" style="height:36px;border:1px solid var(--line);border-radius:9px;padding:0 10px;font-size:13px;margin-left:6px"></label>
-<label style="font-size:13px;color:#64748b">Sampai <input type="date" name="sampai" value="{{ $to }}" style="height:36px;border:1px solid var(--line);border-radius:9px;padding:0 10px;font-size:13px;margin-left:6px"></label>
-<label style="font-size:13px;color:#64748b;display:flex;align-items:center;gap:6px"><input type="checkbox" name="bandingkan" value="1" @checked($compare) style="width:16px;height:16px"> Bandingkan dengan periode sebelumnya</label>
-<button class="btn btn-primary" type="submit">Tampilkan</button></div>
-<div class="toolbar" style="padding-top:0">@foreach($presets as $label => [$a, $b])<a class="btn btn-primary small" href="{{ route('reports.income', ['dari' => $a->toDateString(), 'sampai' => $b->toDateString()] + ($compare ? ['bandingkan' => 1] : [])) }}">{{ $label }}</a>@endforeach</div>
-@if($errors->any())<small class="negative" style="padding:0 16px 12px;display:block">{{ $errors->first() }}</small>@endif</form>
+@include('partials.period-filter', ['routeName' => 'reports.income', 'from' => $from, 'to' => $to, 'compare' => $compare])
 
 <section class="card">
 <div class="card-head"><div><h2>Laporan Laba Rugi</h2><p>{{ config('app.name') }} · {{ $d($from) }} s/d {{ $d($to) }}</p></div>

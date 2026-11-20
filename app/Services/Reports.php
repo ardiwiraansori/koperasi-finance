@@ -41,6 +41,68 @@ class Reports
             'shu' => (float) ($income->sum('amount') - $expense->sum('amount'))];
     }
 
+    // Akun yang menentukan kegiatan sebuah arus kas. Selain ini = operasi (pinjaman, pendapatan, beban, utang usaha, perlengkapan).
+    private const FINANCING = ['31101', '31102', '31201', '20201'];   // simpanan anggota dan cadangan
+    private const INVESTING = ['12201', '12301'];                      // aset tetap
+
+    /**
+     * Laporan arus kas (metode langsung) dari jurnal Posted yang menyentuh Kas Teller. Tiap akun lawan di jurnal itu
+     * menjadi satu baris: bertambahnya kredit = kas masuk, bertambahnya debit = kas keluar. Jumlah semua baris selalu
+     * sama dengan perubahan kas. Saldo awal pembukuan (akun 39101) dipisah karena bukan kegiatan.
+     * shortcut: semua baris periode dimuat ke memori; cukup untuk koperasi kecil, ganti dengan agregasi SQL bila sudah ratusan ribu baris.
+     *
+     * @return array{sections:array,net:float,opening:float,closing:float,ledgerClosing:float,matches:bool}
+     */
+    public static function cashFlow(string $from, string $to): array
+    {
+        $cash = Ledger::KAS[0];
+        $posted = fn () => DB::table('journal_lines as l')->join('journal_entries as e', 'e.id', '=', 'l.journal_entry_id')->where('e.status', 'Posted');
+        $cashUntil = fn (string $op, string $date) => (float) $posted()->where('l.account_code', $cash)->whereDate('e.journal_date', $op, $date)->sum(DB::raw('l.debit - l.credit'));
+
+        $lines = $posted()->whereDate('e.journal_date', '>=', $from)->whereDate('e.journal_date', '<=', $to)->where('l.account_code', '!=', $cash)
+            ->whereIn('l.journal_entry_id', fn ($q) => $q->select('journal_entry_id')->from('journal_lines')->where('account_code', $cash))
+            ->get(['l.account_code as code', 'l.debit', 'l.credit']);
+
+        $totals = [];
+        foreach ($lines as $l) {
+            $group = $l->code === '39101' ? 'opening' : (in_array($l->code, self::FINANCING, true) ? 'financing' : (in_array($l->code, self::INVESTING, true) ? 'investing' : 'operating'));
+            $amount = (float) $l->credit - (float) $l->debit;
+            $totals[$group][$l->code][$amount >= 0 ? 'in' : 'out'] = ($totals[$group][$l->code][$amount >= 0 ? 'in' : 'out'] ?? 0.0) + $amount;
+        }
+
+        $sections = [];
+        foreach (['operating' => 'Aktivitas Operasional', 'investing' => 'Aktivitas Investasi', 'financing' => 'Aktivitas Pendanaan', 'opening' => 'Saldo Awal Pembukuan'] as $key => $title) {
+            $rows = [];
+            foreach ($totals[$key] ?? [] as $code => $dirs) {
+                foreach ($dirs as $dir => $amount) {
+                    if (abs($amount) > 0.004) {
+                        $rows[] = ['label' => self::cashLabel($code, $dir), 'amount' => round($amount, 2), 'sort' => $code.($dir === 'in' ? '0' : '1')];
+                    }
+                }
+            }
+            usort($rows, fn ($a, $b) => $a['sort'] <=> $b['sort']);
+            $sections[$key] = ['title' => $title, 'rows' => $rows, 'total' => round(array_sum(array_column($rows, 'amount')), 2)];
+        }
+
+        $net = round(array_sum(array_column($sections, 'total')), 2);
+        $opening = round($cashUntil('<', $from), 2);
+        $ledgerClosing = round($cashUntil('<=', $to), 2);
+
+        return ['sections' => $sections, 'net' => $net, 'opening' => $opening, 'closing' => round($opening + $net, 2), 'ledgerClosing' => $ledgerClosing,
+            'matches' => round($opening + $net, 2) === $ledgerClosing];
+    }
+
+    private static function cashLabel(string $code, string $dir): string
+    {
+        $name = Coa::name($code);
+        return match (true) {
+            $code === '11301' => $dir === 'in' ? 'Penerimaan angsuran pokok pinjaman' : 'Pencairan pinjaman kepada anggota',
+            $code === '39101' => 'Saldo kas awal yang dimasukkan',
+            in_array($code, self::FINANCING, true) => ($dir === 'in' ? 'Setoran ' : 'Penarikan ').$name,
+            default => ($dir === 'in' ? 'Penerimaan: ' : 'Pembayaran: ').$name,
+        };
+    }
+
     /** @return array{assets:Collection,liabilities:Collection,equity:Collection,totalAssets:float,totalLiabilities:float,totalEquity:float,shuCurrent:float,shuPrior:float,balanced:bool} */
     public static function balanceSheet(string $date): array
     {

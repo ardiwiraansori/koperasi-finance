@@ -1,7 +1,7 @@
 ﻿// Service worker: hanya menyimpan file statis dan halaman offline.
 // Halaman aplikasi (data anggota/keuangan) TIDAK pernah disimpan di HP; selalu diambil dari server.
 // Naikkan CACHE bila offline.html atau daftar PRECACHE berubah.
-const CACHE = 'koperasi-v22';
+const CACHE = 'koperasi-v23';
 const PRECACHE = ['/offline.html', '/assets/app.css', '/assets/app.js', '/icon-192.png'];
 
 self.addEventListener('install', e => {

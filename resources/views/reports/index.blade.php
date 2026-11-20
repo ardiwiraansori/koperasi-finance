@@ -6,7 +6,7 @@
     'Keuangan' => [
         ['Neraca', 'Posisi aset, kewajiban, dan ekuitas per tanggal', '▤', 'reports.balance'],
         ['Laba Rugi', 'Pendapatan, beban, dan SHU pada satu periode', '↕', 'reports.income'],
-        ['Arus Kas', 'Kas masuk dan keluar per kegiatan', '≈', null],
+        ['Arus Kas', 'Kas masuk dan keluar per kegiatan', '≈', 'reports.cashflow'],
         ['Perubahan Ekuitas', 'Perubahan modal dan SHU berjalan', '◎', null],
     ],
     'Akuntansi' => [

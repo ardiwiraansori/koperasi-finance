@@ -160,5 +160,59 @@ class ReportTest extends TestCase
     {
         $this->get('/laporan/neraca')->assertOk()->assertSee('Belum ada saldo');
         $this->get('/laporan/laba-rugi')->assertOk()->assertSee('Tidak ada pendapatan');
+        $this->get('/laporan/arus-kas')->assertOk()->assertSee('Tidak ada pergerakan kas');
+    }
+
+    private function rowsOf(array $flow, string $section): array
+    {
+        return collect($flow['sections'][$section]['rows'])->mapWithKeys(fn ($r) => [$r['label'] => $r['amount']])->all();
+    }
+
+    public function test_cash_flow_groups_activities_and_ties_to_the_cash_account(): void
+    {
+        $y = $this->dataset();
+        $flow = $this->get("/laporan/arus-kas?dari=$y-01-01&sampai=$y-12-31")->assertOk()->assertSee('Kas bertambah')->assertSee('sama dengan saldo Kas Teller')->viewData('flow');
+
+        $this->assertEquals(['Penerimaan: Pendapatan Administrasi dan Provisi' => 6000000, 'Pembayaran: Beban Gaji dan Honor' => -2000000, 'Pencairan pinjaman kepada anggota' => -20000000], $this->rowsOf($flow, 'operating'));
+        $this->assertEquals(['Setoran Simpanan Wajib' => 30000000], $this->rowsOf($flow, 'financing'));
+        $this->assertSame([], $this->rowsOf($flow, 'investing'));          // jurnal H tidak menyentuh kas: tidak ikut
+        $this->assertEquals([-16000000, 30000000, 14000000], [$flow['sections']['operating']['total'], $flow['sections']['financing']['total'], $flow['net']]);
+        $this->assertEquals([106000000, 120000000, true], [$flow['opening'], $flow['closing'], $flow['matches']]);   // 100jt awal + 10jt - 4jt tahun lalu
+
+        // Tahun pembukaan: saldo awal kas bukan kegiatan, tampil terpisah dan tetap menutup ke saldo akhir.
+        $last = $this->get('/laporan/arus-kas?dari='.($y - 1).'-01-01&sampai='.($y - 1).'-12-31')->viewData('flow');
+        $this->assertEquals(['Saldo kas awal yang dimasukkan' => 100000000], $this->rowsOf($last, 'opening'));
+        $this->assertEquals([0, 6000000, 106000000, true], [$last['opening'], $last['sections']['operating']['total'], $last['closing'], $last['matches']]);
+    }
+
+    public function test_cash_flow_splits_inflows_and_outflows_of_the_same_account(): void
+    {
+        $y = now()->year;
+        $this->journal('A', "$y-01-05", [['10101', 5000000, 0], ['31101', 0, 5000000]]);                          // simpanan pokok masuk
+        $this->journal('B', "$y-02-01", [['10101', 1200000, 0], ['11301', 0, 1000000], ['41101', 0, 200000]]);    // angsuran: pokok + bunga
+        $this->journal('C', "$y-02-02", [['20201', 300000, 0], ['10101', 0, 300000]]);                            // penarikan sukarela
+        $this->journal('D', "$y-02-03", [['12201', 800000, 0], ['10101', 0, 800000]]);                            // beli aset tetap
+        $flow = Reports::cashFlow("$y-01-01", "$y-12-31");
+
+        $this->assertEquals(['Penerimaan angsuran pokok pinjaman' => 1000000, 'Penerimaan: Pendapatan Bunga' => 200000], $this->rowsOf($flow, 'operating'));
+        $this->assertEquals(['Setoran Simpanan Pokok' => 5000000, 'Penarikan Simpanan Sukarela Anggota' => -300000], $this->rowsOf($flow, 'financing'));
+        $this->assertEquals(['Pembayaran: Aset Tetap' => -800000], $this->rowsOf($flow, 'investing'));
+        $this->assertEquals([5100000, true], [$flow['closing'], $flow['matches']]);
+    }
+
+    public function test_cash_flow_export_validation_and_access(): void
+    {
+        $y = $this->dataset();
+        $csv = $this->get("/laporan/arus-kas?dari=$y-01-01&sampai=$y-12-31&export=1")->assertOk();
+        $this->assertStringContainsString('Saldo kas akhir periode', $csv->streamedContent());
+        $this->get('/laporan/arus-kas?dari=2026-12-31&sampai=2026-01-01')->assertSessionHasErrors('sampai');
+        $this->get('/laporan')->assertSee(route('reports.cashflow'), false);
+
+        // form periode dipakai bersama: kotak "Bandingkan" hanya di Laba Rugi
+        $this->get('/laporan/laba-rugi')->assertSee('Bandingkan dengan periode sebelumnya')->assertSee('Tahun lalu');
+        $this->get('/laporan/arus-kas')->assertDontSee('Bandingkan dengan periode sebelumnya')->assertSee('Tahun lalu');
+
+        $this->actingAs(User::create(['role' => 'kasir', 'name' => 'Kasir', 'email' => 'k@x.test', 'password' => 'x']));
+        $this->get('/laporan/arus-kas')->assertForbidden();
     }
 }

@@ -105,6 +105,36 @@ class ReportController extends Controller
         ]);
     }
 
+    // ---- Arus Kas ---------------------------------------------------------------------
+
+    public function cashFlow(Request $request): View|StreamedResponse
+    {
+        $request->validate([
+            'dari' => ['nullable', 'date'],
+            'sampai' => ['nullable', 'date', 'after_or_equal:dari'],
+        ], ['sampai.after_or_equal' => 'Tanggal akhir tidak boleh sebelum tanggal awal.', 'date' => 'Format tanggal tidak valid.']);
+
+        $from = Carbon::parse($request->input('dari', now()->startOfYear()->toDateString()))->toDateString();
+        $to = Carbon::parse($request->input('sampai', now()->toDateString()))->toDateString();
+        $flow = Reports::cashFlow($from, $to);
+
+        if ($request->boolean('export')) {
+            $rows = [];
+            foreach ($flow['sections'] as $section) {
+                foreach ($section['rows'] as $r) {
+                    $rows[] = [$section['title'], $r['label'], $r['amount']];
+                }
+                if ($section['rows']) {
+                    $rows[] = [$section['title'], 'Jumlah '.$section['title'], $section['total']];
+                }
+            }
+            array_push($rows, ['', 'Kenaikan (penurunan) kas', $flow['net']], ['', 'Saldo kas awal periode', $flow['opening']], ['', 'Saldo kas akhir periode', $flow['closing']]);
+            return Csv::download("arus-kas-$from-$to.csv", ['Kegiatan', 'Uraian', 'Jumlah'], $rows);
+        }
+
+        return view('reports.cash-flow', ['from' => $from, 'to' => $to, 'flow' => $flow]);
+    }
+
     // Gabungkan baris periode ini (a) dan pembanding (b) per kode akun.
     private function merge($current, $previous): array
     {
