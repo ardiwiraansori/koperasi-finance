@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Member;
@@ -19,9 +20,14 @@ class ShuController extends Controller
     // Pos lainnya hanya ditampilkan sebagai angka, belum dibagi ke individu.
     public const DEFAULTS = ['cadangan' => 25, 'jasa_modal' => 15, 'jasa_usaha' => 15, 'pengurus' => 20, 'pengelola' => 10, 'pendidikan' => 5, 'sarana' => 7.5, 'sosial' => 2.5];
     public const LABELS = [
-        'cadangan' => 'Dana Cadangan', 'jasa_modal' => 'Dana Anggota: Penyimpan', 'jasa_usaha' => 'Dana Anggota: Berjasa',
-        'pengurus' => 'Pengurus & Pengawas', 'pengelola' => 'Pengelola Koperasi', 'pendidikan' => 'Pendidikan',
-        'sarana' => 'Sarana dan Prasarana', 'sosial' => 'Dana Sosial',
+        'cadangan' => 'Dana Cadangan',
+        'jasa_modal' => 'Dana Anggota: Penyimpan',
+        'jasa_usaha' => 'Dana Anggota: Berjasa',
+        'pengurus' => 'Pengurus & Pengawas',
+        'pengelola' => 'Pengelola Koperasi',
+        'pendidikan' => 'Pendidikan',
+        'sarana' => 'Sarana dan Prasarana',
+        'sosial' => 'Dana Sosial',
     ];
 
     public function index(Request $request): View|StreamedResponse
@@ -33,15 +39,15 @@ class ShuController extends Controller
         $request->validate($rules, ['integer' => ':Attribute harus berupa angka bulat.', 'numeric' => ':Attribute harus berupa angka.', 'between' => ':Attribute harus antara :min dan :max.'], ['tahun' => 'tahun']);
 
         $year = (int) ($request->input('tahun') ?: now()->year);
-        $pct = collect(self::DEFAULTS)->map(fn ($d, $k) => round((float) ($request->input($k) ?? $d), 2));
+        $pct = collect(self::DEFAULTS)->map(fn($d, $k) => round((float) ($request->input($k) ?? $d), 2));
         if (abs($pct->sum() - 100) > 0.001) {
-            throw ValidationException::withMessages(['persen' => 'Jumlah persentase pembagian harus 100% (sekarang '.round($pct->sum(), 2).'%).']);
+            throw ValidationException::withMessages(['persen' => 'Jumlah persentase pembagian harus 100% (sekarang ' . round($pct->sum(), 2) . '%).']);
         }
 
         $result = Reports::incomeStatement("$year-01-01", "$year-12-31");
         [$income, $expense] = [$result['totalIncome'], $result['totalExpense']];
         $shu = $income - $expense;
-        $pool = $pct->map(fn ($p) => $shu > 0 ? round($shu * $p / 100) : 0);
+        $pool = $pct->map(fn($p) => $shu > 0 ? round($shu * $p / 100) : 0);
 
         // Jasa modal memakai saldo simpanan pada akhir tahun buku; tahun berjalan memakai saldo hari ini.
         $asOf = min("$year-12-31", today()->toDateString());
@@ -51,7 +57,7 @@ class ShuController extends Controller
         $totalInterest = (float) $interest->sum();
 
         $members = Member::orderBy('member_no')->get()
-            ->filter(fn ($m) => ($savings[$m->id] ?? 0) > 0 || ($interest[$m->id] ?? 0) > 0)
+            ->filter(fn($m) => ($savings[$m->id] ?? 0) > 0 || ($interest[$m->id] ?? 0) > 0)
             ->map(function ($m) use ($savings, $interest, $pool, $totalSavings, $totalInterest) {
                 $s = (float) ($savings[$m->id] ?? 0);
                 $i = (float) ($interest[$m->id] ?? 0);
@@ -61,15 +67,27 @@ class ShuController extends Controller
             })->sortByDesc('total')->values();
 
         if ($request->boolean('export')) {
-            return Csv::download("shu-$year.csv", ['No Anggota', 'Nama', 'Simpanan', 'Bunga Dibayar', 'SHU Jasa Modal', 'SHU Jasa Usaha', 'Total SHU'],
-                $members->map(fn ($r) => [$r['member']->member_no, $r['member']->name, $r['savings'], $r['interest'], $r['capital'], $r['business'], $r['total']]));
+            return Csv::download(
+                "shu-$year.csv",
+                ['No Anggota', 'Nama', 'Simpanan', 'Bunga Dibayar', 'SHU Jasa Modal', 'SHU Jasa Usaha', 'Total SHU'],
+                $members->map(fn($r) => [$r['member']->member_no, $r['member']->name, $r['savings'], $r['interest'], $r['capital'], $r['business'], $r['total']])
+            );
         }
 
-        $years = DB::table('journal_entries')->pluck('journal_date')->map(fn ($d) => (int) substr((string) $d, 0, 4))->push(now()->year, $year)->unique()->sortDesc()->values();
+        $years = DB::table('journal_entries')->pluck('journal_date')->map(fn($d) => (int) substr((string) $d, 0, 4))->push(now()->year, $year)->unique()->sortDesc()->values();
 
         return view('shu.index', [
-            'year' => $year, 'asOf' => $asOf, 'years' => $years, 'pct' => $pct, 'pool' => $pool, 'income' => $income, 'expense' => $expense, 'shu' => $shu,
-            'members' => $members, 'totalSavings' => $totalSavings, 'totalInterest' => $totalInterest,
+            'year' => $year,
+            'asOf' => $asOf,
+            'years' => $years,
+            'pct' => $pct,
+            'pool' => $pool,
+            'income' => $income,
+            'expense' => $expense,
+            'shu' => $shu,
+            'members' => $members,
+            'totalSavings' => $totalSavings,
+            'totalInterest' => $totalInterest,
             'distributed' => ['capital' => $members->sum('capital'), 'business' => $members->sum('business')],
         ]);
     }

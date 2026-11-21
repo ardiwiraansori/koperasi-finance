@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\JournalLine;
@@ -35,8 +36,11 @@ class TellerController extends Controller
             'member_id' => ['required_if:category,Angsuran', 'nullable', 'exists:members,id'],
             'category' => ['required', 'in:Angsuran,Penerimaan,Pengeluaran,Saldo Awal'],
             // Kasir memilih jenis transaksi (bahasa sehari-hari); akunnya ditentukan pemetaan di menu Akuntansi.
-            'jenis_id' => [Rule::requiredIf(in_array($request->input('category'), TransactionType::CATEGORIES, true)), 'nullable',
-                Rule::exists('transaction_types', 'id')->where('active', true)->where('category', $request->input('category'))],
+            'jenis_id' => [
+                Rule::requiredIf(in_array($request->input('category'), TransactionType::CATEGORIES, true)),
+                'nullable',
+                Rule::exists('transaction_types', 'id')->where('active', true)->where('category', $request->input('category'))
+            ],
             'loan_id' => ['required_if:category,Angsuran', 'nullable', 'exists:loans,id'],
             'amount' => ['required', 'numeric', 'min:1', 'max:1000000000'],
             'description' => ['required', 'string', 'max:255'],
@@ -74,7 +78,7 @@ class TellerController extends Controller
                 throw ValidationException::withMessages(['category' => 'Saldo awal kas hanya dicatat satu kali. Selisih berikutnya catat sebagai Penerimaan atau Pengeluaran.']);
             }
             if ($out && $data['amount'] > $cash) {
-                throw ValidationException::withMessages(['amount' => 'Saldo kas tidak cukup (kas Rp '.number_format($cash, 0, ',', '.').'). Catat saldo awal kas dulu bila belum.']);
+                throw ValidationException::withMessages(['amount' => 'Saldo kas tidak cukup (kas Rp ' . number_format($cash, 0, ',', '.') . '). Catat saldo awal kas dulu bila belum.']);
             }
             $kas = Ledger::KAS;
             $lawan = $account;
@@ -85,7 +89,7 @@ class TellerController extends Controller
             )[1];
         });
 
-        return back()->with('success', "{$data['category']} Rp ".number_format($data['amount'], 0, ',', '.')." ($accountName) tersimpan. Jurnal $journalNo dibuat.");
+        return back()->with('success', "{$data['category']} Rp " . number_format($data['amount'], 0, ',', '.') . " ($accountName) tersimpan. Jurnal $journalNo dibuat.");
     }
 
     // Aturan umum angsuran (anuitas): bunga = sisa pokok x bunga tahunan / 12; sisanya mengurangi pokok.
@@ -93,7 +97,7 @@ class TellerController extends Controller
     {
         $result = DB::transaction(function () use ($data) {
             $loan = Loan::with('member')->lockForUpdate()->findOrFail($data['loan_id']);
-            $fail = fn (string $msg) => throw ValidationException::withMessages(['loan_id' => $msg]);
+            $fail = fn(string $msg) => throw ValidationException::withMessages(['loan_id' => $msg]);
 
             if (! empty($data['member_id']) && (int) $data['member_id'] !== $loan->member_id) {
                 $fail('Pinjaman ini bukan milik anggota yang dipilih.');
@@ -103,12 +107,12 @@ class TellerController extends Controller
             }
             $amount = (float) $data['amount'];
             $interest = $loan->interestDue();
-            $fmt = fn ($n) => 'Rp '.number_format($n, 0, ',', '.');
+            $fmt = fn($n) => 'Rp ' . number_format($n, 0, ',', '.');
             if ($amount < $interest) {
-                $fail('Nominal minimal sebesar bunga bulan ini, '.$fmt($interest).'.');
+                $fail('Nominal minimal sebesar bunga bulan ini, ' . $fmt($interest) . '.');
             }
             if ($amount > $loan->outstanding + $interest) {
-                $fail('Nominal melebihi sisa kewajiban, maksimal '.$fmt($loan->outstanding + $interest).' (sisa pokok + bunga bulan ini).');
+                $fail('Nominal melebihi sisa kewajiban, maksimal ' . $fmt($loan->outstanding + $interest) . ' (sisa pokok + bunga bulan ini).');
             }
 
             $principal = $amount - $interest;
@@ -133,8 +137,8 @@ class TellerController extends Controller
         });
 
         [$loan, $principal, $interest, $journalNo] = $result;
-        $fmt = fn ($n) => 'Rp '.number_format($n, 0, ',', '.');
+        $fmt = fn($n) => 'Rp ' . number_format($n, 0, ',', '.');
         $msg = "Angsuran {$loan->loan_no} diterima: pokok {$fmt($principal)}, bunga {$fmt($interest)}. Sisa pokok {$fmt($loan->outstanding)}.";
-        return back()->with('success', $msg.($loan->status === 'Lunas' ? ' Pinjaman LUNAS.' : '')." Jurnal $journalNo dibuat.");
+        return back()->with('success', $msg . ($loan->status === 'Lunas' ? ' Pinjaman LUNAS.' : '') . " Jurnal $journalNo dibuat.");
     }
 }

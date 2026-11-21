@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\JournalLine;
@@ -19,10 +20,13 @@ class LoanController extends Controller
     public function index(): View
     {
         $loans = Loan::with('member')->latest('applied_at')->latest('id')->get();
-        $count = fn (string $status) => $loans->filter(fn ($l) => $l->display_status === $status)->count();
+        $count = fn(string $status) => $loans->filter(fn($l) => $l->display_status === $status)->count();
         $pipeline = [
-            'Menunggu Approval' => $count('Menunggu Approval'), 'Disetujui' => $count('Disetujui'),
-            'Aktif' => $count('Aktif'), 'Tunggakan' => $count('Tunggakan'), 'Lunas' => $count('Lunas'),
+            'Menunggu Approval' => $count('Menunggu Approval'),
+            'Disetujui' => $count('Disetujui'),
+            'Aktif' => $count('Aktif'),
+            'Tunggakan' => $count('Tunggakan'),
+            'Lunas' => $count('Lunas'),
         ];
         return view('loans.index', compact('loans', 'pipeline'));
     }
@@ -31,7 +35,7 @@ class LoanController extends Controller
     public function disbursements(): View
     {
         $loans = Loan::with('member', 'appliedBy', 'approvedBy')->where('status', 'Disetujui')->orderBy('applied_at')->orderBy('id')->get();
-        $payoffs = $loans->mapWithKeys(fn ($l) => [$l->id => Loan::payoffLines($l->member_id)]);
+        $payoffs = $loans->mapWithKeys(fn($l) => [$l->id => Loan::payoffLines($l->member_id)]);
         return view('disbursement.index', ['loans' => $loans, 'payoffs' => $payoffs, 'cash' => JournalLine::cashBalance()]);
     }
 
@@ -40,7 +44,7 @@ class LoanController extends Controller
     {
         $pending = Loan::with('member')->where('status', 'Menunggu Approval')->orderBy('applied_at')->orderBy('id')->get();
         $approved = Loan::with('member')->where('status', 'Disetujui')->orderBy('applied_at')->orderBy('id')->get();
-        $payoffs = $pending->concat($approved)->mapWithKeys(fn ($l) => [$l->id => Loan::payoffLines($l->member_id)]);
+        $payoffs = $pending->concat($approved)->mapWithKeys(fn($l) => [$l->id => Loan::payoffLines($l->member_id)]);
         return view('approval.index', compact('pending', 'approved', 'payoffs'));
     }
 
@@ -48,8 +52,8 @@ class LoanController extends Controller
     {
         $members = Member::where('status', 'Aktif')->orderBy('name')->get();
         // Rincian pelunasan per anggota yang masih punya pinjaman berjalan, untuk panel top-up di formulir (tanpa permintaan tambahan).
-        $topups = collect(Loan::payoffOf(Loan::whereIn('status', Loan::RUNNING)->orderBy('id')->get()))->groupBy(fn ($l) => $l['loan']->member_id)->map(fn ($lines) => [
-            'lines' => $lines->map(fn ($l) => ['no' => $l['loan']->loan_no, 'outstanding' => $l['outstanding'], 'interest' => $l['interest'], 'months' => $l['months'], 'days' => $l['days']])->values(),
+        $topups = collect(Loan::payoffOf(Loan::whereIn('status', Loan::RUNNING)->orderBy('id')->get()))->groupBy(fn($l) => $l['loan']->member_id)->map(fn($lines) => [
+            'lines' => $lines->map(fn($l) => ['no' => $l['loan']->loan_no, 'outstanding' => $l['outstanding'], 'interest' => $l['interest'], 'months' => $l['months'], 'days' => $l['days']])->values(),
             'total' => $lines->sum('total'),
         ]);
         return view('loans.form', compact('members', 'topups'));
@@ -73,9 +77,9 @@ class LoanController extends Controller
             'term_months.between' => 'Tenor harus antara 3 dan 60 bulan.',
         ], ['member_id' => 'anggota', 'principal' => 'plafon', 'term_months' => 'tenor']);
 
-        $loan = $this->retryOnDuplicateNo(fn () => DB::transaction(function () use ($data) {
+        $loan = $this->retryOnDuplicateNo(fn() => DB::transaction(function () use ($data) {
             $member = Member::lockForUpdate()->findOrFail($data['member_id']);
-            $fail = fn (string $msg) => throw ValidationException::withMessages(['member_id' => $msg]);
+            $fail = fn(string $msg) => throw ValidationException::withMessages(['member_id' => $msg]);
 
             // Aturan koperasi: hanya anggota aktif, dan satu pengajuan yang menunggu pada satu waktu. Pinjaman yang masih berjalan
             // (lancar maupun menunggak) tidak menghalangi: pinjaman lama dilunasi dari pencairan pinjaman baru (top-up).
@@ -88,14 +92,21 @@ class LoanController extends Controller
             // Pengecekan awal untuk kasir; keputusan akhir saat pencairan, ketika kewajiban lama dihitung ulang.
             $payoff = array_sum(array_column(Loan::payoffLines($member->id), 'total'));
             if ($payoff > 0 && $data['principal'] <= $payoff) {
-                throw ValidationException::withMessages(['principal' => 'Plafon harus lebih besar dari pelunasan pinjaman lama (Rp '.number_format($payoff, 0, ',', '.').').']);
+                throw ValidationException::withMessages(['principal' => 'Plafon harus lebih besar dari pelunasan pinjaman lama (Rp ' . number_format($payoff, 0, ',', '.') . ').']);
             }
 
             return Loan::create([
-                'member_id' => $member->id, 'loan_no' => $this->nextLoanNo(), 'product' => Loan::PRODUCT,
-                'principal' => $data['principal'], 'interest_rate' => Loan::RATE, 'term_months' => $data['term_months'],
+                'member_id' => $member->id,
+                'loan_no' => $this->nextLoanNo(),
+                'product' => Loan::PRODUCT,
+                'principal' => $data['principal'],
+                'interest_rate' => Loan::RATE,
+                'term_months' => $data['term_months'],
                 'installment' => Loan::annuity($data['principal'], Loan::RATE, $data['term_months']),
-                'outstanding' => 0, 'status' => 'Menunggu Approval', 'applied_at' => today(), 'applied_by' => auth()->id(),
+                'outstanding' => 0,
+                'status' => 'Menunggu Approval',
+                'applied_at' => today(),
+                'applied_by' => auth()->id(),
             ]);
         }));
 
@@ -114,7 +125,7 @@ class LoanController extends Controller
 
     public function openingStore(Request $request): RedirectResponse
     {
-        $request->merge(collect(['principal', 'outstanding', 'installment'])->mapWithKeys(fn ($k) => [$k => preg_replace('/\D/', '', (string) $request->input($k))])->all());
+        $request->merge(collect(['principal', 'outstanding', 'installment'])->mapWithKeys(fn($k) => [$k => preg_replace('/\D/', '', (string) $request->input($k))])->all());
         $data = $request->validate([
             'member_id' => ['required', 'exists:members,id'],
             'loan_no' => ['nullable', 'string', 'max:30', 'unique:loans,loan_no'],
@@ -126,25 +137,56 @@ class LoanController extends Controller
             'next_due_at' => ['required', 'date', 'after_or_equal:disbursed_at'],
             'tanggal' => ['required', 'date', 'before_or_equal:today', 'after_or_equal:disbursed_at'],
         ], [
-            'required' => ':Attribute wajib diisi.', 'exists' => ':Attribute tidak ditemukan.', 'in' => ':Attribute tidak valid.',
-            'numeric' => ':Attribute harus berupa angka.', 'integer' => ':Attribute harus berupa angka bulat.', 'unique' => 'Nomor pinjaman ini sudah dipakai.',
-            'min' => ':Attribute minimal Rp 1.', 'outstanding.lte' => 'Sisa pokok tidak boleh lebih besar dari plafon.',
-            'term_months.between' => 'Tenor harus antara 1 dan 120 bulan.', 'before_or_equal' => ':Attribute tidak boleh di masa depan.',
-            'after_or_equal' => ':Attribute tidak boleh sebelum tanggal pencairan.', 'date' => 'Format tanggal tidak valid.',
-        ], ['member_id' => 'anggota', 'loan_no' => 'nomor pinjaman', 'principal' => 'plafon', 'term_months' => 'tenor', 'outstanding' => 'sisa pokok',
-            'installment' => 'cicilan', 'disbursed_at' => 'tanggal pencairan', 'next_due_at' => 'jatuh tempo berikutnya', 'tanggal' => 'tanggal saldo awal']);
+            'required' => ':Attribute wajib diisi.',
+            'exists' => ':Attribute tidak ditemukan.',
+            'in' => ':Attribute tidak valid.',
+            'numeric' => ':Attribute harus berupa angka.',
+            'integer' => ':Attribute harus berupa angka bulat.',
+            'unique' => 'Nomor pinjaman ini sudah dipakai.',
+            'min' => ':Attribute minimal Rp 1.',
+            'outstanding.lte' => 'Sisa pokok tidak boleh lebih besar dari plafon.',
+            'term_months.between' => 'Tenor harus antara 1 dan 120 bulan.',
+            'before_or_equal' => ':Attribute tidak boleh di masa depan.',
+            'after_or_equal' => ':Attribute tidak boleh sebelum tanggal pencairan.',
+            'date' => 'Format tanggal tidak valid.',
+        ], [
+            'member_id' => 'anggota',
+            'loan_no' => 'nomor pinjaman',
+            'principal' => 'plafon',
+            'term_months' => 'tenor',
+            'outstanding' => 'sisa pokok',
+            'installment' => 'cicilan',
+            'disbursed_at' => 'tanggal pencairan',
+            'next_due_at' => 'jatuh tempo berikutnya',
+            'tanggal' => 'tanggal saldo awal'
+        ]);
 
-        $loan = $this->retryOnDuplicateNo(fn () => DB::transaction(function () use ($data) {
+        $loan = $this->retryOnDuplicateNo(fn() => DB::transaction(function () use ($data) {
             $loan = Loan::create([
-                'member_id' => $data['member_id'], 'loan_no' => ($data['loan_no'] ?? null) ?: $this->nextLoanNo(), 'product' => Loan::PRODUCT,
-                'principal' => $data['principal'], 'interest_rate' => Loan::RATE, 'term_months' => $data['term_months'],
+                'member_id' => $data['member_id'],
+                'loan_no' => ($data['loan_no'] ?? null) ?: $this->nextLoanNo(),
+                'product' => Loan::PRODUCT,
+                'principal' => $data['principal'],
+                'interest_rate' => Loan::RATE,
+                'term_months' => $data['term_months'],
                 'installment' => ($data['installment'] ?? null) ?: Loan::annuity($data['principal'], Loan::RATE, $data['term_months']),
-                'outstanding' => $data['outstanding'], 'status' => 'Aktif', 'applied_at' => $data['disbursed_at'],
-                'disbursed_at' => $data['disbursed_at'], 'next_due_at' => $data['next_due_at'], 'applied_by' => auth()->id(),
+                'outstanding' => $data['outstanding'],
+                'status' => 'Aktif',
+                'applied_at' => $data['disbursed_at'],
+                'disbursed_at' => $data['disbursed_at'],
+                'next_due_at' => $data['next_due_at'],
+                'applied_by' => auth()->id(),
             ]);
             Ledger::post(
-                ['member_id' => $loan->member_id, 'loan_id' => $loan->id, 'category' => 'Saldo Awal Pinjaman', 'direction' => 'in', 'amount' => $loan->outstanding,
-                 'description' => "Saldo awal pinjaman {$loan->loan_no}", 'trx_date' => Carbon::parse($data['tanggal'])->startOfDay()],
+                [
+                    'member_id' => $loan->member_id,
+                    'loan_id' => $loan->id,
+                    'category' => 'Saldo Awal Pinjaman',
+                    'direction' => 'in',
+                    'amount' => $loan->outstanding,
+                    'description' => "Saldo awal pinjaman {$loan->loan_no}",
+                    'trx_date' => Carbon::parse($data['tanggal'])->startOfDay()
+                ],
                 [['11301', 'Piutang Pinjaman', $loan->outstanding, 0], [...Saving::OPENING, 0, $loan->outstanding]]
             );
             return $loan;
@@ -157,7 +199,7 @@ class LoanController extends Controller
     // dan seluruh transaksinya diulang dengan nomor berikutnya. Dipanggil di luar DB::transaction (PostgreSQL membatalkan transaksi yang galat).
     private function retryOnDuplicateNo(callable $create): Loan
     {
-        for ($try = 1; ; $try++) {
+        for ($try = 1;; $try++) {
             try {
                 return $create();
             } catch (UniqueConstraintViolationException $e) {
@@ -205,7 +247,7 @@ class LoanController extends Controller
             $cash = Ledger::lockCash(); // harus pernyataan pertama: lihat catatan di Ledger::lockCash
             $member = Member::lockForUpdate()->findOrFail($loan->member_id); // urutan kunci tetap: kas, anggota, pinjaman baru, pinjaman lama
             $loan = Loan::lockForUpdate()->findOrFail($loan->id);
-            $fail = fn (string $msg) => throw ValidationException::withMessages(['loan' => $msg]);
+            $fail = fn(string $msg) => throw ValidationException::withMessages(['loan' => $msg]);
 
             if ($loan->status !== 'Disetujui') {
                 $fail('Hanya pinjaman berstatus Disetujui yang bisa dicairkan.');
@@ -218,11 +260,11 @@ class LoanController extends Controller
             $lines = Loan::payoffLines($loan->member_id, lock: true);
             $payoff = array_sum(array_column($lines, 'total'));
             if ($lines && $loan->principal <= $payoff) {
-                $fail('Plafon harus lebih besar dari pelunasan pinjaman lama (Rp '.number_format($payoff, 0, ',', '.').'). Tolak pengajuan ini dan ajukan ulang dengan plafon yang cukup.');
+                $fail('Plafon harus lebih besar dari pelunasan pinjaman lama (Rp ' . number_format($payoff, 0, ',', '.') . '). Tolak pengajuan ini dan ajukan ulang dengan plafon yang cukup.');
             }
             $net = $loan->principal - $payoff;
             if ($net > $cash) {
-                $fail('Saldo kas tidak cukup untuk pencairan (uang keluar Rp '.number_format($net, 0, ',', '.').', kas Rp '.number_format($cash, 0, ',', '.').').');
+                $fail('Saldo kas tidak cukup untuk pencairan (uang keluar Rp ' . number_format($net, 0, ',', '.') . ', kas Rp ' . number_format($cash, 0, ',', '.') . ').');
             }
 
             foreach ($lines as $line) {
@@ -243,7 +285,7 @@ class LoanController extends Controller
             return [$journalNo, $lines, $net];
         });
 
-        $topup = $settled ? ' Pelunasan '.implode(', ', array_map(fn ($l) => $l['loan']->loan_no, $settled)).' Rp '.number_format(array_sum(array_column($settled, 'total')), 0, ',', '.').'; uang keluar Rp '.number_format($net, 0, ',', '.').'.' : '';
+        $topup = $settled ? ' Pelunasan ' . implode(', ', array_map(fn($l) => $l['loan']->loan_no, $settled)) . ' Rp ' . number_format(array_sum(array_column($settled, 'total')), 0, ',', '.') . '; uang keluar Rp ' . number_format($net, 0, ',', '.') . '.' : '';
 
         return back()->with('success', "Pinjaman {$loan->loan_no} dicairkan.$topup Jurnal $journalNo dibuat.");
     }

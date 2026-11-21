@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Loan;
@@ -42,7 +43,11 @@ class ReportController extends Controller
         }
 
         return view('reports.balance-sheet', [
-            'date' => $date, 'prevDate' => $prevDate, 'compare' => $compare, 'now' => $now, 'prev' => $prev,
+            'date' => $date,
+            'prevDate' => $prevDate,
+            'compare' => $compare,
+            'now' => $now,
+            'prev' => $prev,
             'lines' => [
                 'Aset' => $this->merge($now['assets'], $prev['assets'] ?? collect()),
                 'Kewajiban' => $this->merge($now['liabilities'], $prev['liabilities'] ?? collect()),
@@ -56,15 +61,15 @@ class ReportController extends Controller
     private function reconciliation(string $date): array
     {
         $totals = Reports::totals(null, $date);
-        $journal = fn (string $code, int $sign) => $sign * ((float) ($totals[$code]['debit'] ?? 0) - (float) ($totals[$code]['credit'] ?? 0));
-        $sub = fn (string $type) => (float) Saving::where('type', $type)->sum('balance');
+        $journal = fn(string $code, int $sign) => $sign * ((float) ($totals[$code]['debit'] ?? 0) - (float) ($totals[$code]['credit'] ?? 0));
+        $sub = fn(string $type) => (float) Saving::where('type', $type)->sum('balance');
 
         return collect([
             ['Simpanan Pokok', '31101', $journal('31101', -1), $sub('Pokok')],
             ['Simpanan Wajib', '31102', $journal('31102', -1), $sub('Wajib')],
             ['Simpanan Sukarela', '20201', $journal('20201', -1), $sub('Sukarela')],
             ['Piutang Pinjaman', '11301', $journal('11301', 1), (float) Loan::whereIn('status', Loan::RUNNING)->sum('outstanding')],
-        ])->map(fn ($r) => ['name' => $r[0], 'code' => $r[1], 'ledger' => $r[2], 'sub' => $r[3], 'diff' => round($r[2] - $r[3], 2)])->all();
+        ])->map(fn($r) => ['name' => $r[0], 'code' => $r[1], 'ledger' => $r[2], 'sub' => $r[3], 'diff' => round($r[2] - $r[3], 2)])->all();
     }
 
     // ---- Laba Rugi --------------------------------------------------------------------
@@ -100,7 +105,13 @@ class ReportController extends Controller
         }
 
         return view('reports.income-statement', [
-            'from' => $from, 'to' => $to, 'prevFrom' => $prevFrom, 'prevTo' => $prevTo, 'compare' => $compare, 'now' => $now, 'prev' => $prev,
+            'from' => $from,
+            'to' => $to,
+            'prevFrom' => $prevFrom,
+            'prevTo' => $prevTo,
+            'compare' => $compare,
+            'now' => $now,
+            'prev' => $prev,
             'lines' => ['Pendapatan' => $this->merge($now['income'], $prev['income'] ?? collect()), 'Beban' => $this->merge($now['expense'], $prev['expense'] ?? collect())],
         ]);
     }
@@ -125,7 +136,7 @@ class ReportController extends Controller
                     $rows[] = [$section['title'], $r['label'], $r['amount']];
                 }
                 if ($section['rows']) {
-                    $rows[] = [$section['title'], 'Jumlah '.$section['title'], $section['total']];
+                    $rows[] = [$section['title'], 'Jumlah ' . $section['title'], $section['total']];
                 }
             }
             array_push($rows, ['', 'Kenaikan (penurunan) kas', $flow['net']], ['', 'Saldo kas awal periode', $flow['opening']], ['', 'Saldo kas akhir periode', $flow['closing']]);

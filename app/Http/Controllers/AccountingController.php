@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\JournalEntry;
@@ -52,8 +53,11 @@ class AccountingController extends Controller
             }
         })();
 
-        return Csv::download('jurnal-'.now()->format('Ymd').'.csv',
-            ['Tanggal', 'No Jurnal', 'Referensi', 'Keterangan', 'Sumber', 'Status', 'Kode Akun', 'Nama Akun', 'Debit', 'Kredit'], $rows);
+        return Csv::download(
+            'jurnal-' . now()->format('Ymd') . '.csv',
+            ['Tanggal', 'No Jurnal', 'Referensi', 'Keterangan', 'Sumber', 'Status', 'Kode Akun', 'Nama Akun', 'Debit', 'Kredit'],
+            $rows
+        );
     }
 
     private function validateFilters(Request $request): void
@@ -69,12 +73,12 @@ class AccountingController extends Controller
     private function filtered(Request $request): Builder
     {
         return JournalEntry::query()
-            ->when($request->filled('dari'), fn ($q) => $q->whereDate('journal_date', '>=', $request->input('dari')))
-            ->when($request->filled('sampai'), fn ($q) => $q->whereDate('journal_date', '<=', $request->input('sampai')))
-            ->when($request->filled('sumber'), fn ($q) => $q->where('source', $request->input('sumber')))
+            ->when($request->filled('dari'), fn($q) => $q->whereDate('journal_date', '>=', $request->input('dari')))
+            ->when($request->filled('sampai'), fn($q) => $q->whereDate('journal_date', '<=', $request->input('sampai')))
+            ->when($request->filled('sumber'), fn($q) => $q->where('source', $request->input('sumber')))
             ->when($request->filled('q'), function ($q) use ($request) {
-                $like = '%'.$request->input('q').'%';
-                $q->where(fn ($w) => $w->where('journal_no', 'like', $like)->orWhere('description', 'like', $like)->orWhere('reference', 'like', $like));
+                $like = '%' . $request->input('q') . '%';
+                $q->where(fn($w) => $w->where('journal_no', 'like', $like)->orWhere('description', 'like', $like)->orWhere('reference', 'like', $like));
             });
     }
 
@@ -89,8 +93,8 @@ class AccountingController extends Controller
         ], ['sampai.after_or_equal' => 'Tanggal akhir tidak boleh sebelum tanggal awal.', 'date' => 'Format tanggal tidak valid.']);
 
         // Daftar akun: bagan akun resmi ditambah kode lain yang kebetulan sudah ada di jurnal.
-        $accounts = collect(Coa::ACCOUNTS)->map(fn ($a) => $a[0]);
-        DB::table('journal_lines')->distinct()->pluck('account_name', 'account_code')->each(fn ($name, $code) => $accounts->has($code) ?: $accounts->put($code, $name));
+        $accounts = collect(Coa::ACCOUNTS)->map(fn($a) => $a[0]);
+        DB::table('journal_lines')->distinct()->pluck('account_name', 'account_code')->each(fn($name, $code) => $accounts->has($code) ?: $accounts->put($code, $name));
         $accounts = $accounts->sortKeys();
 
         $code = $request->input('akun');
@@ -104,15 +108,15 @@ class AccountingController extends Controller
                 ->get(['journal_lines.*', 'e.journal_date as j_date', 'e.journal_no as j_no', 'e.description as j_desc']);
             $from = $request->input('dari');
             $to = $request->input('sampai');
-            $date = fn ($l) => substr((string) $l->j_date, 0, 10);
+            $date = fn($l) => substr((string) $l->j_date, 0, 10);
 
-            $running = $lines->filter(fn ($l) => $from && $date($l) < $from)->sum(fn ($l) => $sign * ((float) $l->debit - (float) $l->credit));
+            $running = $lines->filter(fn($l) => $from && $date($l) < $from)->sum(fn($l) => $sign * ((float) $l->debit - (float) $l->credit));
             $opening = $running;
-            $rows = $lines->filter(fn ($l) => (! $from || $date($l) >= $from) && (! $to || $date($l) <= $to))->map(function ($l) use (&$running, $sign) {
+            $rows = $lines->filter(fn($l) => (! $from || $date($l) >= $from) && (! $to || $date($l) <= $to))->map(function ($l) use (&$running, $sign) {
                 $running += $sign * ((float) $l->debit - (float) $l->credit);
                 return ['line' => $l, 'saldo' => $running];
             })->values();
-            $ledger = ['opening' => $opening, 'rows' => $rows, 'debit' => $rows->sum(fn ($r) => (float) $r['line']->debit), 'credit' => $rows->sum(fn ($r) => (float) $r['line']->credit), 'closing' => $rows->last()['saldo'] ?? $opening];
+            $ledger = ['opening' => $opening, 'rows' => $rows, 'debit' => $rows->sum(fn($r) => (float) $r['line']->debit), 'credit' => $rows->sum(fn($r) => (float) $r['line']->credit), 'closing' => $rows->last()['saldo'] ?? $opening];
         }
 
         return view('accounting.ledger', ['accounts' => $accounts, 'code' => $code, 'ledger' => $ledger, 'dari' => $request->input('dari'), 'sampai' => $request->input('sampai')]);
@@ -126,19 +130,29 @@ class AccountingController extends Controller
         $until = $request->input('sampai', now()->toDateString());
 
         // Sumber angka yang sama dengan Neraca dan Laba Rugi (AppServicesReports), supaya aturan jurnal Posted hanya ada di satu tempat.
-        $rows = Reports::totals(null, $until)->values()->map(fn ($r) => [
-            'code' => $r['code'], 'name' => $r['name'], 'type' => Coa::type($r['code']),
-            'debit' => $r['debit'], 'credit' => $r['credit'],
-            'balD' => max(0, $r['debit'] - $r['credit']), 'balK' => max(0, $r['credit'] - $r['debit']),
+        $rows = Reports::totals(null, $until)->values()->map(fn($r) => [
+            'code' => $r['code'],
+            'name' => $r['name'],
+            'type' => Coa::type($r['code']),
+            'debit' => $r['debit'],
+            'credit' => $r['credit'],
+            'balD' => max(0, $r['debit'] - $r['credit']),
+            'balK' => max(0, $r['credit'] - $r['debit']),
         ]);
 
         if ($request->boolean('export')) {
-            return Csv::download('neraca-saldo-'.$until.'.csv', ['Kode', 'Akun', 'Golongan', 'Total Debit', 'Total Kredit', 'Saldo Debit', 'Saldo Kredit'],
-                $rows->map(fn ($r) => [$r['code'], $r['name'], $r['type'], $r['debit'], $r['credit'], $r['balD'], $r['balK']]));
+            return Csv::download(
+                'neraca-saldo-' . $until . '.csv',
+                ['Kode', 'Akun', 'Golongan', 'Total Debit', 'Total Kredit', 'Saldo Debit', 'Saldo Kredit'],
+                $rows->map(fn($r) => [$r['code'], $r['name'], $r['type'], $r['debit'], $r['credit'], $r['balD'], $r['balK']])
+            );
         }
 
-        return view('accounting.trial-balance', ['rows' => $rows, 'until' => $until,
-            'totals' => ['debit' => $rows->sum('debit'), 'credit' => $rows->sum('credit'), 'balD' => $rows->sum('balD'), 'balK' => $rows->sum('balK')]]);
+        return view('accounting.trial-balance', [
+            'rows' => $rows,
+            'until' => $until,
+            'totals' => ['debit' => $rows->sum('debit'), 'credit' => $rows->sum('credit'), 'balD' => $rows->sum('balD'), 'balK' => $rows->sum('balK')]
+        ]);
     }
 
     // ---- Jenis Transaksi Kasir (pemetaan jenis -> akun) --------------------------------
@@ -146,7 +160,7 @@ class AccountingController extends Controller
     public function types(): View
     {
         $types = TransactionType::orderBy('category')->orderBy('sort')->orderBy('name')->withCount('transactions')->get();
-        $eligible = collect(TransactionType::CATEGORIES)->mapWithKeys(fn ($c) => [$c => TransactionType::eligibleAccounts($c)])->all();
+        $eligible = collect(TransactionType::CATEGORIES)->mapWithKeys(fn($c) => [$c => TransactionType::eligibleAccounts($c)])->all();
         return view('accounting.types', compact('types', 'eligible'));
     }
 
@@ -184,8 +198,10 @@ class AccountingController extends Controller
     private function typeMessages(): array
     {
         return [
-            'required' => ':Attribute wajib diisi.', 'in' => ':Attribute tidak valid untuk kategori ini (penerimaan memakai akun pendapatan, pengeluaran memakai akun beban).',
-            'max' => ':Attribute terlalu panjang (maksimal :max karakter).', 'unique' => 'Jenis dengan nama itu sudah ada pada kategori ini.',
+            'required' => ':Attribute wajib diisi.',
+            'in' => ':Attribute tidak valid untuk kategori ini (penerimaan memakai akun pendapatan, pengeluaran memakai akun beban).',
+            'max' => ':Attribute terlalu panjang (maksimal :max karakter).',
+            'unique' => 'Jenis dengan nama itu sudah ada pada kategori ini.',
         ];
     }
 
@@ -200,8 +216,8 @@ class AccountingController extends Controller
     {
         // Nominal berformat rupiah ("1.500.000"): ambil angkanya; baris yang sama sekali kosong dibuang.
         $lines = collect($request->input('lines', []))
-            ->map(fn ($l) => ['account' => $l['account'] ?? null, 'debit' => preg_replace('/\D/', '', (string) ($l['debit'] ?? '')), 'credit' => preg_replace('/\D/', '', (string) ($l['credit'] ?? ''))])
-            ->filter(fn ($l) => $l['account'] || $l['debit'] !== '' || $l['credit'] !== '')->values()->all();
+            ->map(fn($l) => ['account' => $l['account'] ?? null, 'debit' => preg_replace('/\D/', '', (string) ($l['debit'] ?? '')), 'credit' => preg_replace('/\D/', '', (string) ($l['credit'] ?? ''))])
+            ->filter(fn($l) => $l['account'] || $l['debit'] !== '' || $l['credit'] !== '')->values()->all();
         $request->merge(['lines' => $lines]);
 
         $data = $request->validate([
@@ -224,21 +240,25 @@ class AccountingController extends Controller
         ], ['tanggal' => 'tanggal', 'keterangan' => 'keterangan', 'lines.*.account' => 'akun']);
 
         $lines = collect($data['lines']);
-        $both = $lines->first(fn ($l) => ($l['debit'] ?? '') !== '' && ($l['credit'] ?? '') !== '');
-        $none = $lines->first(fn ($l) => ($l['debit'] ?? '') === '' && ($l['credit'] ?? '') === '');
+        $both = $lines->first(fn($l) => ($l['debit'] ?? '') !== '' && ($l['credit'] ?? '') !== '');
+        $none = $lines->first(fn($l) => ($l['debit'] ?? '') === '' && ($l['credit'] ?? '') === '');
         if ($both || $none) {
             throw ValidationException::withMessages(['lines' => 'Setiap baris harus berisi debit atau kredit, salah satu saja.']);
         }
-        $debit = $lines->sum(fn ($l) => (float) ($l['debit'] ?? 0));
-        $credit = $lines->sum(fn ($l) => (float) ($l['credit'] ?? 0));
+        $debit = $lines->sum(fn($l) => (float) ($l['debit'] ?? 0));
+        $credit = $lines->sum(fn($l) => (float) ($l['credit'] ?? 0));
         if (round($debit, 2) !== round($credit, 2)) {
-            throw ValidationException::withMessages(['lines' => 'Jurnal tidak seimbang: debit Rp '.number_format($debit, 0, ',', '.').', kredit Rp '.number_format($credit, 0, ',', '.').'.']);
+            throw ValidationException::withMessages(['lines' => 'Jurnal tidak seimbang: debit Rp ' . number_format($debit, 0, ',', '.') . ', kredit Rp ' . number_format($credit, 0, ',', '.') . '.']);
         }
 
         $journal = DB::transaction(function () use ($data, $lines) {
             $journal = JournalEntry::create([
-                'journal_no' => 'JM-'.now()->format('ymdHis').'-'.Str::upper(Str::random(3)), 'journal_date' => $data['tanggal'],
-                'reference' => null, 'description' => $data['keterangan'], 'source' => 'MANUAL', 'status' => 'Posted',
+                'journal_no' => 'JM-' . now()->format('ymdHis') . '-' . Str::upper(Str::random(3)),
+                'journal_date' => $data['tanggal'],
+                'reference' => null,
+                'description' => $data['keterangan'],
+                'source' => 'MANUAL',
+                'status' => 'Posted',
             ]);
             foreach ($lines as $l) {
                 $journal->lines()->create(['account_code' => $l['account'], 'account_name' => Coa::name($l['account']), 'debit' => (float) ($l['debit'] ?? 0), 'credit' => (float) ($l['credit'] ?? 0)]);

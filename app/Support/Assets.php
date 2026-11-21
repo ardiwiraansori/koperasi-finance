@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Support;
 
 // Alamat CSS dan JS dengan nomor versi dari waktu ubah file. Tanpa ini browser (dan service worker) bisa terus memakai app.js lama
@@ -9,6 +10,6 @@ class Assets
     {
         $file = public_path($path);
 
-        return asset($path).(is_file($file) ? '?v='.filemtime($file) : '');
+        return asset($path) . (is_file($file) ? '?v=' . filemtime($file) : '');
     }
 }

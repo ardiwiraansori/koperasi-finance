@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -18,8 +19,14 @@ class Saving extends Model
         'Sukarela' => ['20201', 'Simpanan Sukarela Anggota'],
     ];
 
-    protected $fillable = ['member_id','account_no','type','balance'];
+    protected $fillable = ['member_id', 'account_no', 'type', 'balance'];
     protected $casts = ['balance' => 'decimal:2'];
-    public function member(): BelongsTo { return $this->belongsTo(Member::class); }
-    public function transactions(): HasMany { return $this->hasMany(Transaction::class); }
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(Member::class);
+    }
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
 }

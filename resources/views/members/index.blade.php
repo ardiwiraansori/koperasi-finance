@@ -7,8 +7,13 @@
             <h1>Data Anggota</h1>
             <p>Kelola profil, simpanan, pinjaman, dan aktivitas anggota.</p>
         </div>
-        <div class="heading-actions">@if(auth()->user()->allows('export'))<a class="btn btn-light" href="{{ route('members.export') }}">↓ Export Excel</a>@endif @if(auth()->user()->allows('members.write'))<a class="btn btn-primary"
-                href="{{ route('members.create') }}">＋ Tambah Anggota</a>@endif</div>
+        <div class="heading-actions">
+            @if (auth()->user()->allows('export'))
+                <a class="btn btn-light" href="{{ route('members.export') }}">↓ Export Excel</a>
+                @endif @if (auth()->user()->allows('members.write'))
+                    <a class="btn btn-primary" href="{{ route('members.create') }}">＋ Tambah Anggota</a>
+                @endif
+        </div>
     </div>
     <div class="summary-strip">
         <div><span>Total Anggota</span><strong>{{ $members->count() }}</strong></div>
@@ -21,8 +26,8 @@
     <div class="card">
         <div class="toolbar">
             <div class="search-box">⌕ <input aria-label="Cari anggota" data-table-search="#memberTable"
-                    placeholder="Cari nama, nomor anggota, cabang..."></div><select aria-label="Filter cabang" data-filter-table="#memberTable"
-                data-filter-col="1">
+                    placeholder="Cari nama, nomor anggota, cabang..."></div><select aria-label="Filter cabang"
+                data-filter-table="#memberTable" data-filter-col="1">
                 <option value="">Semua Cabang</option>
                 @foreach (\App\Http\Controllers\MemberController::BRANCHES as $b)
                     <option>{{ $b }}</option>
@@ -58,7 +63,8 @@
                             <td>{{ $member->branch }}</td>
                             <td>{{ $member->joined_at->format('d M Y') }}</td>
                             <td class="right">Rp {{ number_format($member->savings_sum_balance ?? 0, 0, ',', '.') }}</td>
-                            <td class="right">Rp {{ number_format($member->loans_sum_outstanding ?? 0, 0, ',', '.') }}</td>
+                            <td class="right">Rp {{ number_format($member->loans_sum_outstanding ?? 0, 0, ',', '.') }}
+                            </td>
                             <td><span class="badge {{ $member->status === 'Aktif' ? 'success' : 'neutral' }}">●
                                     {{ $member->status }}</span></td>
                             <td class="right"><a class="row-action" href="{{ route('members.show', $member) }}">›</a></td>

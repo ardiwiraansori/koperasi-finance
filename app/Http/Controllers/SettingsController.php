@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
@@ -19,11 +20,14 @@ class SettingsController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'koperasi_name' => ['required', 'string', 'max:80'],
-            'has_accountant' => ['required', 'in:0,1'],
-        ], ['required' => ':Attribute wajib diisi.', 'max' => ':Attribute terlalu panjang (maksimal :max karakter).', 'in' => 'Pilihan mode akuntansi tidak valid.'],
-            ['koperasi_name' => 'nama koperasi', 'has_accountant' => 'mode akuntansi']);
+        $data = $request->validate(
+            [
+                'koperasi_name' => ['required', 'string', 'max:80'],
+                'has_accountant' => ['required', 'in:0,1'],
+            ],
+            ['required' => ':Attribute wajib diisi.', 'max' => ':Attribute terlalu panjang (maksimal :max karakter).', 'in' => 'Pilihan mode akuntansi tidak valid.'],
+            ['koperasi_name' => 'nama koperasi', 'has_accountant' => 'mode akuntansi']
+        );
 
         Setting::put('koperasi_name', $data['koperasi_name']);
         Setting::put('has_accountant', $data['has_accountant']);
@@ -40,7 +44,7 @@ class SettingsController extends Controller
         ], $this->messages(), ['name' => 'nama', 'email' => 'email', 'password' => 'sandi', 'role' => 'peran']);
 
         User::create($data);
-        return back()->with('success', "Pengguna {$data['name']} ditambahkan sebagai ".User::ROLES[$data['role']].'.');
+        return back()->with('success', "Pengguna {$data['name']} ditambahkan sebagai " . User::ROLES[$data['role']] . '.');
     }
 
     public function updateUser(Request $request, User $user): RedirectResponse
@@ -63,7 +67,7 @@ class SettingsController extends Controller
             }
         }
 
-        $user->fill(array_filter($data, fn ($v, $k) => $k !== 'password' || filled($v), ARRAY_FILTER_USE_BOTH))->save();
+        $user->fill(array_filter($data, fn($v, $k) => $k !== 'password' || filled($v), ARRAY_FILTER_USE_BOTH))->save();
         if ($user->is($request->user())) {
             Auth::setUser($user); // salinan pengguna yang masuk masih membawa sandi lama; tanpa ini sesinya disimpan dengan sidik lama lalu ditolak
         }
@@ -88,14 +92,18 @@ class SettingsController extends Controller
     // Peran yang boleh dipilih: akuntan hanya bila koperasi memiliki akuntan.
     private function roles(): array
     {
-        return collect(User::ROLES)->when(! Setting::hasAccountant(), fn ($r) => $r->except('akuntan'))->all();
+        return collect(User::ROLES)->when(! Setting::hasAccountant(), fn($r) => $r->except('akuntan'))->all();
     }
 
     private function messages(): array
     {
         return [
-            'required' => ':Attribute wajib diisi.', 'email' => 'Format email tidak valid.', 'unique' => 'Email ini sudah dipakai pengguna lain.',
-            'min' => ':Attribute minimal :min karakter.', 'max' => ':Attribute terlalu panjang.', 'in' => ':Attribute tidak valid.',
+            'required' => ':Attribute wajib diisi.',
+            'email' => 'Format email tidak valid.',
+            'unique' => 'Email ini sudah dipakai pengguna lain.',
+            'min' => ':Attribute minimal :min karakter.',
+            'max' => ':Attribute terlalu panjang.',
+            'in' => ':Attribute tidak valid.',
         ];
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +19,7 @@ class AuthController extends Controller
         $request->validate(['email' => ['required', 'string', 'max:255'], 'password' => ['required']]);
         $login = strtolower(trim($request->input('email')));
         // Anggota masuk dengan nomor anggota (AG000128); akunnya disimpan dengan email internal ag000128@anggota.local.
-        $credentials = ['email' => preg_match('/^ag\d+$/', $login) ? $login.'@anggota.local' : $login, 'password' => $request->input('password')];
+        $credentials = ['email' => preg_match('/^ag\d+$/', $login) ? $login . '@anggota.local' : $login, 'password' => $request->input('password')];
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors(['email' => 'Email atau kata sandi salah.'])->onlyInput('email');

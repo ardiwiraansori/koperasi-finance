@@ -38,7 +38,13 @@ class User extends Authenticatable
         return in_array($this->role, self::ABILITIES[$ability] ?? [], true);
     }
 
-    public function member(): \Illuminate\Database\Eloquent\Relations\BelongsTo { return $this->belongsTo(Member::class); }
+    public function member(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Member::class);
+    }
 
-    public function roleLabel(): string { return self::ROLES[$this->role] ?? ucfirst($this->role); }
+    public function roleLabel(): string
+    {
+        return self::ROLES[$this->role] ?? ucfirst($this->role);
+    }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Loan;
@@ -18,7 +19,7 @@ class SavingsController extends Controller
     public function index(): View
     {
         $savings = Saving::with('member')->orderByDesc('balance')->get();
-        $summary = $savings->groupBy('type')->map(fn ($rows) => $rows->sum('balance'));
+        $summary = $savings->groupBy('type')->map(fn($rows) => $rows->sum('balance'));
         return view('savings.index', compact('savings', 'summary'));
     }
 
@@ -28,7 +29,7 @@ class SavingsController extends Controller
         $withdraw = $mode === 'penarikan';
         $indebted = Loan::whereIn('status', Loan::RUNNING)->pluck('member_id')->flip(); // anggota dengan pinjaman berjalan
         $savings = Saving::with('member')->orderBy('account_no')->get()->filter(
-            fn (Saving $s) => $withdraw ? $s->balance > 0 && $this->canWithdraw($s) && ! $indebted->has($s->member_id) : $s->member->status === 'Aktif'
+            fn(Saving $s) => $withdraw ? $s->balance > 0 && $this->canWithdraw($s) && ! $indebted->has($s->member_id) : $s->member->status === 'Aktif'
         );
         return view('savings.transaction', ['savings' => $savings, 'withdraw' => $withdraw, 'selected' => $request->integer('rekening')]);
     }
@@ -53,7 +54,7 @@ class SavingsController extends Controller
         $result = DB::transaction(function () use ($data, $withdraw) {
             $cash = $withdraw ? Ledger::lockCash() : 0; // harus pernyataan pertama: lihat catatan di Ledger::lockCash
             $saving = Saving::with('member')->lockForUpdate()->findOrFail($data['saving_id']);
-            $fail = fn (string $msg) => throw ValidationException::withMessages(['saving_id' => $msg]);
+            $fail = fn(string $msg) => throw ValidationException::withMessages(['saving_id' => $msg]);
 
             if ($withdraw) {
                 // Aturan umum: Pokok dan Wajib hanya bisa ditarik setelah keluar dari keanggotaan; Sukarela bebas.
@@ -66,10 +67,10 @@ class SavingsController extends Controller
                     $fail("Anggota masih punya pinjaman berjalan ($running). Lunasi dulu sebelum menarik simpanan.");
                 }
                 if ($data['amount'] > $saving->balance) {
-                    $fail('Saldo tidak cukup. Saldo rekening Rp '.number_format($saving->balance, 0, ',', '.').'.');
+                    $fail('Saldo tidak cukup. Saldo rekening Rp ' . number_format($saving->balance, 0, ',', '.') . '.');
                 }
                 if ($data['amount'] > $cash) {
-                    $fail('Saldo kas tidak cukup untuk penarikan ini (kas Rp '.number_format($cash, 0, ',', '.').').');
+                    $fail('Saldo kas tidak cukup untuk penarikan ini (kas Rp ' . number_format($cash, 0, ',', '.') . ').');
                 }
                 $saving->decrement('balance', $data['amount']);
             } else {
@@ -98,7 +99,7 @@ class SavingsController extends Controller
             return [$label, $saving->account_no, $journalNo];
         });
 
-        return redirect()->route('savings.index')->with('success', "{$result[0]} Rp ".number_format($data['amount'], 0, ',', '.')." rekening {$result[1]} berhasil. Jurnal {$result[2]} dibuat.");
+        return redirect()->route('savings.index')->with('success', "{$result[0]} Rp " . number_format($data['amount'], 0, ',', '.') . " rekening {$result[1]} berhasil. Jurnal {$result[2]} dibuat.");
     }
 
     // Rekening koran: mutasi satu rekening dengan saldo berjalan. Saldo awal = saldo sekarang - semua mutasi tercatat.
@@ -118,7 +119,7 @@ class SavingsController extends Controller
             $from = $request->date('dari')?->startOfDay();
             $to = $request->date('sampai')?->endOfDay();
             $all = $saving->transactions()->orderBy('trx_date')->orderBy('id')->get();
-            $signed = fn (Transaction $t) => $t->direction === 'in' ? (float) $t->amount : -(float) $t->amount;
+            $signed = fn(Transaction $t) => $t->direction === 'in' ? (float) $t->amount : -(float) $t->amount;
 
             $running = (float) $saving->balance - $all->sum($signed);
             $opening = $running;
@@ -128,22 +129,27 @@ class SavingsController extends Controller
             });
 
             // Saldo awal simpanan (cut-over) adalah mutasi pertama rekening dan dilipat ke baris "Saldo awal", bukan dihitung sebagai setoran.
-            $isOpening = fn ($l) => $l['trx']->category === 'Saldo Awal Simpanan';
-            $inPeriod = fn ($l) => (! $from || $l['trx']->trx_date->gte($from)) && (! $to || $l['trx']->trx_date->lte($to));
-            $periodOpening = ($from ? ($lines->filter(fn ($l) => $l['trx']->trx_date->lt($from))->last()['saldo'] ?? $opening) : $opening)
-                + $lines->filter(fn ($l) => $isOpening($l) && $inPeriod($l))->sum(fn ($l) => (float) $l['trx']->amount);
-            $rows = $lines->filter(fn ($l) => $inPeriod($l) && ! $isOpening($l))->values();
+            $isOpening = fn($l) => $l['trx']->category === 'Saldo Awal Simpanan';
+            $inPeriod = fn($l) => (! $from || $l['trx']->trx_date->gte($from)) && (! $to || $l['trx']->trx_date->lte($to));
+            $periodOpening = ($from ? ($lines->filter(fn($l) => $l['trx']->trx_date->lt($from))->last()['saldo'] ?? $opening) : $opening)
+                + $lines->filter(fn($l) => $isOpening($l) && $inPeriod($l))->sum(fn($l) => (float) $l['trx']->amount);
+            $rows = $lines->filter(fn($l) => $inPeriod($l) && ! $isOpening($l))->values();
             $statement = [
                 'opening' => $periodOpening,
                 'rows' => $rows,
-                'in' => $rows->where('trx.direction', 'in')->sum(fn ($l) => (float) $l['trx']->amount),
-                'out' => $rows->where('trx.direction', 'out')->sum(fn ($l) => (float) $l['trx']->amount),
+                'in' => $rows->where('trx.direction', 'in')->sum(fn($l) => (float) $l['trx']->amount),
+                'out' => $rows->where('trx.direction', 'out')->sum(fn($l) => (float) $l['trx']->amount),
                 'closing' => $rows->last()['saldo'] ?? $periodOpening,
             ];
         }
 
-        return view('savings.statement', ['accounts' => $accounts, 'saving' => $saving, 'statement' => $statement,
-            'dari' => $request->input('dari'), 'sampai' => $request->input('sampai')]);
+        return view('savings.statement', [
+            'accounts' => $accounts,
+            'saving' => $saving,
+            'statement' => $statement,
+            'dari' => $request->input('dari'),
+            'sampai' => $request->input('sampai')
+        ]);
     }
 
     // Saldo awal simpanan untuk anggota lama saat mulai memakai aplikasi: saldo rekening terisi, kas TIDAK berubah.
@@ -152,14 +158,14 @@ class SavingsController extends Controller
     {
         $members = Member::orderBy('member_no')->get();
         $member = $request->filled('anggota') ? Member::with('savings')->find($request->integer('anggota')) : null;
-        $locked = $member ? $member->savings->mapWithKeys(fn (Saving $s) => [$s->type => $s->balance > 0 || $s->transactions()->exists()])->all() : [];
+        $locked = $member ? $member->savings->mapWithKeys(fn(Saving $s) => [$s->type => $s->balance > 0 || $s->transactions()->exists()])->all() : [];
         return view('savings.opening', compact('members', 'member', 'locked'));
     }
 
     public function openingStore(Request $request): RedirectResponse
     {
         $types = ['Pokok', 'Wajib', 'Sukarela'];
-        $saldo = collect($types)->mapWithKeys(fn ($t) => [$t => preg_replace('/\D/', '', (string) $request->input("saldo.$t"))])->all();
+        $saldo = collect($types)->mapWithKeys(fn($t) => [$t => preg_replace('/\D/', '', (string) $request->input("saldo.$t"))])->all();
         $request->merge(['saldo' => $saldo]);
         $data = $request->validate([
             'member_id' => ['required', 'exists:members,id'],
@@ -175,7 +181,7 @@ class SavingsController extends Controller
             'date' => 'Format tanggal tidak valid.',
         ], ['member_id' => 'anggota', 'tanggal' => 'tanggal']);
 
-        $filled = collect($data['saldo'])->filter(fn ($v) => (float) $v > 0);
+        $filled = collect($data['saldo'])->filter(fn($v) => (float) $v > 0);
         if ($filled->isEmpty()) {
             throw ValidationException::withMessages(['saldo' => 'Isi minimal satu saldo awal simpanan.']);
         }
@@ -190,8 +196,15 @@ class SavingsController extends Controller
                 $amount = (float) $amount;
                 $saving->update(['balance' => $amount]);
                 Ledger::post(
-                    ['member_id' => $member->id, 'saving_id' => $saving->id, 'category' => 'Saldo Awal Simpanan', 'direction' => 'in', 'amount' => $amount,
-                     'description' => "Saldo awal simpanan $type {$member->member_no}", 'trx_date' => Carbon::parse($data['tanggal'])->startOfDay()],
+                    [
+                        'member_id' => $member->id,
+                        'saving_id' => $saving->id,
+                        'category' => 'Saldo Awal Simpanan',
+                        'direction' => 'in',
+                        'amount' => $amount,
+                        'description' => "Saldo awal simpanan $type {$member->member_no}",
+                        'trx_date' => Carbon::parse($data['tanggal'])->startOfDay()
+                    ],
                     [[...Saving::OPENING, $amount, 0], [...Saving::ACCOUNTS[$type], 0, $amount]]
                 );
             }

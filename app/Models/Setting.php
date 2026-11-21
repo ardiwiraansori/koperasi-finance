@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -25,10 +26,19 @@ class Setting extends Model
         self::$cache = null;
     }
 
-    public static function forget(): void { self::$cache = null; }
+    public static function forget(): void
+    {
+        self::$cache = null;
+    }
 
     // Koperasi punya akuntan? Bawaan: tidak, supaya kasir dan pengurus bisa bekerja tanpa istilah akuntansi.
-    public static function hasAccountant(): bool { return self::get('has_accountant', '0') === '1'; }
+    public static function hasAccountant(): bool
+    {
+        return self::get('has_accountant', '0') === '1';
+    }
 
-    public static function cooperativeName(): string { return self::get('koperasi_name') ?: 'Koperasi Mutiara Tigo Pasie'; }
+    public static function cooperativeName(): string
+    {
+        return self::get('koperasi_name') ?: 'Koperasi Mutiara Tigo Pasie';
+    }
 }

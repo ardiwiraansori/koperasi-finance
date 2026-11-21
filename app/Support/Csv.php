@@ -10,7 +10,7 @@ class Csv
     // Awalan ' mencegah sel diperlakukan sebagai rumus Excel (=, +, -, @) bila isian pengguna diawali karakter itu.
     public static function safe(mixed $v): mixed
     {
-        return is_string($v) && $v !== '' && str_contains('=+-@', $v[0]) ? "'".$v : $v;
+        return is_string($v) && $v !== '' && str_contains('=+-@', $v[0]) ? "'" . $v : $v;
     }
 
     public static function download(string $filename, array $header, iterable $rows): StreamedResponse

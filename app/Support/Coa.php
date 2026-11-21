@@ -54,6 +54,6 @@ class Coa
     /** @return array<string,string> kode => nama untuk jurnal manual */
     public static function manual(): array
     {
-        return collect(self::ACCOUNTS)->except(self::SYSTEM)->map(fn ($a) => $a[0])->all();
+        return collect(self::ACCOUNTS)->except(self::SYSTEM)->map(fn($a) => $a[0])->all();
     }
 }

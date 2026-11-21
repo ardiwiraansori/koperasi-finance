@@ -61,11 +61,11 @@ class Alerts
         // Pinjaman berjalan hanya dimuat bila memang ada (jumlahnya sudah diketahui dari hitungan status).
         if (self::loanCount('Aktif') + self::loanCount('Tunggakan') > 0) {
             $running = Loan::whereIn('status', Loan::RUNNING)->get(['id', 'status', 'next_due_at']);
-            $overdue = $running->filter(fn (Loan $l) => $l->daysOverdue() > 0);
-            $overdue->isNotEmpty() && $add('danger', $overdue->count().' pinjaman menunggak (terlama '.$overdue->max(fn (Loan $l) => $l->daysOverdue()).' hari)', route('loans.index'));
+            $overdue = $running->filter(fn(Loan $l) => $l->daysOverdue() > 0);
+            $overdue->isNotEmpty() && $add('danger', $overdue->count() . ' pinjaman menunggak (terlama ' . $overdue->max(fn(Loan $l) => $l->daysOverdue()) . ' hari)', route('loans.index'));
 
-            $soon = $running->filter(fn (Loan $l) => $l->next_due_at && $l->next_due_at->betweenIncluded(today(), today()->addDays(7)));
-            $soon->isNotEmpty() && $add('warning', $soon->count().' angsuran jatuh tempo dalam 7 hari', route('loans.index'));
+            $soon = $running->filter(fn(Loan $l) => $l->next_due_at && $l->next_due_at->betweenIncluded(today(), today()->addDays(7)));
+            $soon->isNotEmpty() && $add('warning', $soon->count() . ' angsuran jatuh tempo dalam 7 hari', route('loans.index'));
         }
 
         // Petunjuk awal untuk pengelola: kas belum punya saldo awal.

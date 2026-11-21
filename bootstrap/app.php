@@ -27,6 +27,6 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 // Produksi selalu HTTPS (Render, Rumahweb). Tanpa ini, di belakang proxy semua alamat (CSS, form login, PWA) dibuat dengan http://
 // dan diblokir browser. Lokal (APP_ENV=local) tidak terpengaruh.
-$app->booted(fn () => $app->isProduction() && \Illuminate\Support\Facades\URL::forceScheme('https'));
+$app->booted(fn() => $app->isProduction() && \Illuminate\Support\Facades\URL::forceScheme('https'));
 
 return $app;

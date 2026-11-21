@@ -22,7 +22,7 @@ class Ledger
      */
     public static function lockCash(): float
     {
-        $lock = fn () => DB::table('settings')->where('key', 'cash_lock')->lockForUpdate()->first();
+        $lock = fn() => DB::table('settings')->where('key', 'cash_lock')->lockForUpdate()->first();
         if (! $lock()) {
             // Baris pengunci dibuat sendiri pada pemakaian pertama. Kunci dicoba dulu karena INSERT yang bentrok di MariaDB memegang kunci bersama,
             // dan dua transaksi yang sama-sama memegangnya lalu meminta kunci eksklusif akan saling menunggu (deadlock).
@@ -46,12 +46,16 @@ class Ledger
             throw new \LogicException("Jurnal tidak seimbang: debit $debit, kredit $credit");
         }
 
-        $ref = now()->format('ymdHis').'-'.Str::upper(Str::random(5)); // 5 huruf acak: aman untuk banyak transaksi pada detik yang sama
+        $ref = now()->format('ymdHis') . '-' . Str::upper(Str::random(5)); // 5 huruf acak: aman untuk banyak transaksi pada detik yang sama
         Transaction::create($trx + ['trx_no' => "TRX-$ref", 'trx_date' => now(), 'status' => 'Posted']); // trx_date boleh diisi pemanggil (saldo awal)
 
         $journal = JournalEntry::create([
-            'journal_no' => "JU-$ref", 'journal_date' => $trx['trx_date'] ?? now(), 'reference' => "TRX-$ref",
-            'description' => $trx['description'], 'source' => 'AUTO JOURNAL', 'status' => 'Posted',
+            'journal_no' => "JU-$ref",
+            'journal_date' => $trx['trx_date'] ?? now(),
+            'reference' => "TRX-$ref",
+            'description' => $trx['description'],
+            'source' => 'AUTO JOURNAL',
+            'status' => 'Posted',
         ]);
         foreach ($lines as [$code, $name, $dr, $cr]) {
             if ($dr > 0 || $cr > 0) {

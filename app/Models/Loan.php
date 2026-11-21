@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -15,16 +16,37 @@ class Loan extends Model
     public const PRODUCT = 'Pinjaman Reguler';
     public const RATE = 12.5;
 
-    protected $fillable = ['member_id','loan_no','product','principal','interest_rate','term_months','installment','outstanding','status','applied_at','disbursed_at','next_due_at','note','applied_by','approved_by','disbursed_by','settled_by_loan_id'];
-    protected $casts = ['principal'=>'decimal:2','interest_rate'=>'decimal:2','installment'=>'decimal:2','outstanding'=>'decimal:2','applied_at'=>'date','disbursed_at'=>'date','next_due_at'=>'date'];
+    protected $fillable = ['member_id', 'loan_no', 'product', 'principal', 'interest_rate', 'term_months', 'installment', 'outstanding', 'status', 'applied_at', 'disbursed_at', 'next_due_at', 'note', 'applied_by', 'approved_by', 'disbursed_by', 'settled_by_loan_id'];
+    protected $casts = ['principal' => 'decimal:2', 'interest_rate' => 'decimal:2', 'installment' => 'decimal:2', 'outstanding' => 'decimal:2', 'applied_at' => 'date', 'disbursed_at' => 'date', 'next_due_at' => 'date'];
 
-    public function member(): BelongsTo { return $this->belongsTo(Member::class); }
-    public function transactions(): HasMany { return $this->hasMany(Transaction::class); }
-    public function appliedBy(): BelongsTo { return $this->belongsTo(User::class, 'applied_by'); }
-    public function approvedBy(): BelongsTo { return $this->belongsTo(User::class, 'approved_by'); }
-    public function disbursedBy(): BelongsTo { return $this->belongsTo(User::class, 'disbursed_by'); }
-    public function settledBy(): BelongsTo { return $this->belongsTo(self::class, 'settled_by_loan_id'); }
-    public function settledLoans(): HasMany { return $this->hasMany(self::class, 'settled_by_loan_id'); }
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(Member::class);
+    }
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+    public function appliedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'applied_by');
+    }
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+    public function disbursedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'disbursed_by');
+    }
+    public function settledBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'settled_by_loan_id');
+    }
+    public function settledLoans(): HasMany
+    {
+        return $this->hasMany(self::class, 'settled_by_loan_id');
+    }
 
     // Bunga bulan berjalan dari sisa pokok. Satu rumus untuk angsuran di kasir dan pelunasan top-up.
     public function interestDue(): float
@@ -92,7 +114,7 @@ class Loan extends Model
     // Status tampilan: pinjaman berjalan otomatis "Tunggakan" bila lewat jatuh tempo, tanpa menunggu ada yang mengubah data.
     protected function displayStatus(): Attribute
     {
-        return Attribute::get(fn () => in_array($this->status, self::RUNNING, true) ? ($this->daysOverdue() > 0 ? 'Tunggakan' : 'Aktif') : $this->status);
+        return Attribute::get(fn() => in_array($this->status, self::RUNNING, true) ? ($this->daysOverdue() > 0 ? 'Tunggakan' : 'Aktif') : $this->status);
     }
 
     // Jadwal sisa angsuran pinjaman berjalan: dari sisa pokok sekarang, mulai jatuh tempo berikutnya, dengan cicilan yang berlaku.
