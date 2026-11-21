@@ -5,6 +5,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -63,11 +64,14 @@ class SettingsController extends Controller
         }
 
         $user->fill(array_filter($data, fn ($v, $k) => $k !== 'password' || filled($v), ARRAY_FILTER_USE_BOTH))->save();
+        if ($user->is($request->user())) {
+            Auth::setUser($user); // salinan pengguna yang masuk masih membawa sandi lama; tanpa ini sesinya disimpan dengan sidik lama lalu ditolak
+        }
         return back()->with('success', "Pengguna {$user->name} diperbarui.");
     }
 
-    // Pengguna yang berhenti dihapus: sesi yang masih terbuka ikut mati pada permintaan berikutnya karena akunnya tidak ada lagi
-    // (mengganti sandi saja tidak menutup sesi atau cookie "ingat saya" yang sudah ada). Tidak ada data lain yang menunjuk ke pengguna.
+    // Pengguna yang berhenti dihapus: sesi yang masih terbuka ikut mati pada permintaan berikutnya karena akunnya tidak ada lagi.
+    // (Mengganti sandi juga menutup sesi lamanya, tetapi akun yang berhenti sebaiknya dihapus.) Tidak ada data lain yang menunjuk ke pengguna.
     public function destroyUser(Request $request, User $user): RedirectResponse
     {
         if ($user->id === $request->user()->id) {

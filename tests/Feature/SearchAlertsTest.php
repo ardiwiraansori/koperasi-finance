@@ -90,6 +90,8 @@ class SearchAlertsTest extends TestCase
         $kasirTexts = collect(Alerts::for($kasir))->pluck('text')->implode(' | ');
         $this->assertStringNotContainsString('persetujuan', $kasirTexts);                      // keputusan bukan urusan kasir
         $this->assertStringContainsString('menunggak', $kasirTexts);
+        $this->assertStringContainsString('1 pinjaman disetujui, siap dicairkan', $kasirTexts);   // kasir yang mencairkan
+        $this->assertSame(route('disbursement.index'), collect(Alerts::for($kasir))->firstWhere('text', '1 pinjaman disetujui, siap dicairkan')['url']);
     }
 
     public function test_bell_shows_real_count_and_panel_not_a_fake_dot(): void

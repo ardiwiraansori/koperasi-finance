@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\JournalEntry;
+use App\Models\JournalLine;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 // Satu pintu untuk mencatat transaksi + jurnal otomatis. Panggil di dalam DB::transaction milik pemanggil.
@@ -12,7 +14,27 @@ class Ledger
     public const KAS = ['10101', 'Kas Teller'];
 
     /**
-     * @param array $trx   member_id, saving_id, loan_id (opsional), category, direction, amount, description
+     * Kunci kas untuk semua jalur kas keluar (pencairan, penarikan simpanan, pengeluaran kasir), lalu kembalikan saldo kas.
+     * Pemanggil berikutnya menunggu transaksi ini selesai, jadi dua pengeluaran besar tidak bisa sama-sama lolos cek saldo.
+     * Panggil sebagai pernyataan PERTAMA di dalam DB::transaction, sebelum memuat rekening atau pinjaman. Di MariaDB (REPEATABLE READ)
+     * gambaran data transaksi dibekukan pada SELECT biasa pertama; bila kunci diambil setelahnya, saldo kas dibaca dari gambaran lama
+     * dan pengeluaran pemanggil sebelumnya tidak terlihat. Urutan kunci selalu kas dulu, baru baris lain, jadi tidak bisa saling menunggu.
+     */
+    public static function lockCash(): float
+    {
+        $lock = fn () => DB::table('settings')->where('key', 'cash_lock')->lockForUpdate()->first();
+        if (! $lock()) {
+            // Baris pengunci dibuat sendiri pada pemakaian pertama. Kunci dicoba dulu karena INSERT yang bentrok di MariaDB memegang kunci bersama,
+            // dan dua transaksi yang sama-sama memegangnya lalu meminta kunci eksklusif akan saling menunggu (deadlock).
+            DB::table('settings')->insertOrIgnore(['key' => 'cash_lock']);
+            $lock();
+        }
+
+        return JournalLine::cashBalance();
+    }
+
+    /**
+     * @param array $trx  member_id, saving_id, loan_id (opsional), category, direction, amount, description
      * @param array $lines [[kode akun, nama akun, debit, kredit], ...]; total debit harus sama dengan total kredit
      * @return array{0:string,1:string} [nomor transaksi, nomor jurnal]
      */

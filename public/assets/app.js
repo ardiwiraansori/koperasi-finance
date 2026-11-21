@@ -1,6 +1,66 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Dialog konfirmasi dan alasan di dalam halaman, pengganti confirm() dan prompt() bawaan browser.
+  // Pakai pada form: data-dialog="Judul" [data-dialog-text="Pesan"] [data-dialog-ok="Teks tombol"] [data-dialog-danger]
+  // [data-dialog-reason="Label alasan"]. Bila data-dialog-reason ada, alasan wajib diisi dan dikirim lewat <input type="hidden" name="note"> di form itu.
+  const modal = document.createElement('dialog');
+  modal.className = 'modal';
+  modal.setAttribute('aria-labelledby', 'modal-title');
+  modal.innerHTML = '<form method="dialog"><h2 id="modal-title"></h2><p data-modal-text></p>'
+    + '<label data-modal-reason hidden><span></span><textarea rows="3" maxlength="200"></textarea><small class="negative" role="alert" hidden></small></label>'
+    + '<div class="modal-actions"><button type="submit" value="cancel" class="btn btn-cancel">Batal</button><button type="submit" value="ok" class="btn btn-primary" data-modal-ok>Lanjutkan</button></div></form>';
+  document.body.append(modal);
+  const mTitle = modal.querySelector('#modal-title');
+  const mText = modal.querySelector('[data-modal-text]');
+  const mReasonBox = modal.querySelector('[data-modal-reason]');
+  const mReason = mReasonBox.querySelector('textarea');
+  const mError = mReasonBox.querySelector('small');
+  const mOk = modal.querySelector('[data-modal-ok]');
+  const mCancel = modal.querySelector('[value=cancel]');
+  // Alasan kosong tidak boleh lolos: tahan penutupan dialog dan tampilkan pesan di bawah kolom.
+  mOk.addEventListener('click', e => {
+    if (!mReasonBox.hidden && !mReason.value.trim()) {
+      e.preventDefault();
+      mError.textContent = 'Alasan wajib diisi.';
+      mError.hidden = false;
+      mReason.focus();
+    }
+  });
+  const ask = form => new Promise(resolve => {
+    const d = form.dataset;
+    mTitle.textContent = d.dialog;
+    mText.textContent = d.dialogText || '';
+    mText.hidden = !d.dialogText;
+    mOk.textContent = d.dialogOk || 'Lanjutkan';
+    mOk.className = 'btn ' + (d.dialogDanger !== undefined ? 'btn-danger' : 'btn-primary');
+    mReasonBox.hidden = d.dialogReason === undefined;
+    mReasonBox.firstElementChild.textContent = d.dialogReason || '';
+    mReason.value = '';
+    mError.hidden = true;
+    modal.returnValue = ''; // Esc menutup tanpa nilai: dianggap batal
+    modal.addEventListener('close', () => resolve(modal.returnValue === 'ok' ? mReason.value.trim() : null), { once: true });
+    modal.showModal();
+    (mReasonBox.hidden ? mCancel : mReason).focus(); // tanpa alasan, fokus di Batal supaya Enter tidak langsung mencairkan
+  });
+  // Fase tangkap: berjalan sebelum pengunci kirim ganda di bawah, jadi form tidak terkunci selagi dialog terbuka.
+  document.addEventListener('submit', async e => {
+    const form = e.target;
+    if (!form.dataset || form.dataset.dialog === undefined || form.dataset.dialogDone) return;
+    e.preventDefault();
+    if (typeof modal.showModal !== 'function') { // browser sangat lama tanpa <dialog>
+      if (confirm(form.dataset.dialogText || form.dataset.dialog)) { form.dataset.dialogDone = '1'; form.submit(); }
+      return;
+    }
+    const value = await ask(form);
+    if (value === null) return;
+    if (form.dataset.dialogReason !== undefined) form.elements.note.value = value;
+    form.dataset.dialogDone = '1';
+    form.requestSubmit();
+    delete form.dataset.dialogDone;
+  }, true);
+  window.dialogReady = true; // melepas pengaman di <head> layout: dari sini dialog yang menjaga form ber-data-dialog
+
   // Cegah kirim ganda: ketukan kedua pada "Simpan" (koneksi HP lambat) tidak boleh mencatat transaksi dua kali.
-  // Pengendali onsubmit bawaan (konfirmasi, prompt alasan) berjalan lebih dulu; bila membatalkan, form tidak dikunci.
+  // Dialog di atas berjalan lebih dulu dan membatalkan kirim; selama dialog terbuka form tidak dikunci.
   [...document.forms].filter(form => form.method === 'post').forEach(form => form.addEventListener('submit', e => {
     if (e.defaultPrevented) return;
     if (form.dataset.sent) { e.preventDefault(); return; }
@@ -85,10 +145,24 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-loan-calc]').forEach(form => {
     const f = form.elements;
     const note = form.querySelector('[data-loan-estimate]');
+    // Top-up: anggota yang masih punya pinjaman berjalan melunasinya dari pencairan ini; data dihitung server (Loan::payoffOf).
+    const topups = JSON.parse(form.dataset.topups || '{}');
+    const panel = form.querySelector('[data-topup-panel]');
+    const rp = x => 'Rp ' + Math.round(x).toLocaleString('id-ID');
+    const showTopup = p => {
+      const t = panel && f.member_id ? topups[f.member_id.value] : null;
+      if (!panel) return;
+      panel.hidden = !t;
+      if (!t) return;
+      const rows = t.lines.map(l => `• ${l.no}: sisa pokok ${rp(l.outstanding)} + bunga ${rp(l.interest)}${l.months > 1 ? ` (${l.months} bulan)` : ''}${l.days ? `, menunggak ${l.days} hari` : ''}`);
+      const verdict = !p ? '' : p > t.total ? `\nUang yang diterima anggota ± ${rp(p - t.total)}.` : '\n⚠ Plafon harus lebih besar dari total pelunasan.';
+      panel.textContent = `Pinjaman lama dilunasi dari pencairan ini:\n${rows.join('\n')}\nTotal pelunasan ${rp(t.total)}.${verdict}`;
+    };
     const sync = () => {
       const p = Number(String(f.principal.value).replace(/\D/g, ''));
+      showTopup(p);
       const n = Number(f.term_months.value);
-      const rate = Number(f.product.selectedOptions[0]?.dataset.rate);
+      const rate = Number(form.dataset.rate);
       if (!p || !n || !rate) return;
       const r = rate / 1200;
       const pmt = Math.round(p * r / (1 - Math.pow(1 + r, -n)));

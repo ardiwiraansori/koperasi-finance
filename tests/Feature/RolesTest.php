@@ -30,8 +30,11 @@ class RolesTest extends TestCase
     }
 
     private const ALL = ['/dashboard', '/anggota', '/simpanan', '/simpanan/rekening-koran', '/pinjaman', '/cari'];
-    private const INPUT = ['/kasir', '/anggota/tambah', '/simpanan/setoran', '/simpanan/penarikan', '/pinjaman/ajukan'];
-    private const ACCOUNTING = ['/akuntansi', '/akuntansi/buku-besar', '/akuntansi/neraca-saldo', '/akuntansi/jenis-transaksi', '/laporan', '/laporan/neraca', '/laporan/laba-rugi', '/shu'];
+    private const INPUT = ['/kasir', '/anggota/tambah', '/simpanan/setoran', '/simpanan/penarikan'];
+    private const APPLY = ['/pinjaman/ajukan'];   // pengajuan pinjaman: kasir saja (sementara, sampai ada kebijakan koperasi)
+    private const DISBURSE = ['/pencairan'];      // pencairan pinjaman yang sudah disetujui: kasir saja (kasir memegang uang tunai)
+    private const ACCOUNTING = ['/akuntansi', '/akuntansi/buku-besar', '/akuntansi/neraca-saldo', '/akuntansi/jenis-transaksi', '/shu'];
+    private const REPORTS = ['/laporan', '/laporan/neraca', '/laporan/laba-rugi', '/laporan/arus-kas'];   // laporan keuangan, hanya baca: semua peran petugas
     private const OPENING = ['/simpanan/saldo-awal', '/pinjaman/saldo-awal'];
 
     private function expect(array $urls, int $status): void
@@ -44,7 +47,7 @@ class RolesTest extends TestCase
     public function test_kasir_can_only_input_and_view_not_account_decide_or_configure(): void
     {
         $this->as('kasir');
-        $this->expect(array_merge(self::ALL, self::INPUT), 200);
+        $this->expect(array_merge(self::ALL, self::INPUT, self::APPLY, self::DISBURSE, self::REPORTS), 200);
         $this->expect(array_merge(self::ACCOUNTING, self::OPENING, ['/akuntansi/jurnal-manual', '/akuntansi/export', '/approval', '/pengaturan', '/anggota/export']), 403);
     }
 
@@ -52,14 +55,15 @@ class RolesTest extends TestCase
     {
         Setting::put('has_accountant', '1');
         $this->as('akuntan');
-        $this->expect(array_merge(self::ALL, self::ACCOUNTING, self::OPENING, ['/akuntansi/jurnal-manual', '/akuntansi/export', '/anggota/export']), 200);
-        $this->expect(array_merge(self::INPUT, ['/approval', '/pengaturan']), 403);
+        $this->expect(array_merge(self::ALL, self::ACCOUNTING, self::REPORTS, self::OPENING, ['/akuntansi/jurnal-manual', '/akuntansi/export', '/anggota/export']), 200);
+        $this->expect(array_merge(self::INPUT, self::APPLY, self::DISBURSE, ['/approval', '/pengaturan']), 403);
     }
 
     public function test_admin_can_open_everything_but_manual_journal_only_with_an_accountant(): void
     {
         $this->as('admin');
-        $this->expect(array_merge(self::ALL, self::INPUT, self::ACCOUNTING, self::OPENING, ['/approval', '/pengaturan', '/anggota/export']), 200);
+        $this->expect(array_merge(self::ALL, self::INPUT, self::ACCOUNTING, self::REPORTS, self::OPENING, ['/approval', '/pengaturan', '/anggota/export']), 200);
+        $this->expect(array_merge(self::APPLY, self::DISBURSE), 403);   // admin menyetujui; kasir yang mengajukan dan mencairkan
 
         $this->get('/akuntansi/jurnal-manual')->assertForbidden();                      // mode tanpa akuntan (bawaan)
         Setting::put('has_accountant', '1');
@@ -75,8 +79,8 @@ class RolesTest extends TestCase
             'installment' => 88849, 'outstanding' => 0, 'status' => 'Menunggu Approval', 'applied_at' => today()]);
 
         $this->post("/pinjaman/{$loan->id}/setujui")->assertForbidden();
-        $this->post("/pinjaman/{$loan->id}/cairkan")->assertForbidden();
         $this->post("/pinjaman/{$loan->id}/tolak", ['note' => 'x'])->assertForbidden();
+        $this->post("/pinjaman/{$loan->id}/cairkan")->assertSessionHasErrors('loan');   // kasir boleh mencairkan, tetapi hanya yang sudah disetujui
         $this->assertSame('Menunggu Approval', $loan->fresh()->status);
 
         $this->post('/akuntansi/jenis-transaksi', ['category' => 'Pengeluaran', 'name' => 'Baru', 'account_code' => '51101'])->assertForbidden();
@@ -86,6 +90,12 @@ class RolesTest extends TestCase
 
         // Saldo awal kas lewat Kasir juga hanya admin/akuntan
         $this->post('/kasir', ['category' => 'Saldo Awal', 'amount' => '1.000', 'description' => 'x'])->assertSessionHasErrors('category');
+
+        // Admin menyetujui tetapi tidak mencairkan.
+        $this->as('admin');
+        $loan->update(['status' => 'Disetujui']);
+        $this->post("/pinjaman/{$loan->id}/cairkan")->assertForbidden();
+        $this->assertSame('Disetujui', $loan->fresh()->status);
     }
 
     public function test_akuntan_cannot_enter_cash_transactions_or_decide_loans(): void
@@ -119,16 +129,18 @@ class RolesTest extends TestCase
     {
         $this->as('kasir');
         $page = $this->get('/dashboard')->assertOk()->assertSee('Kasir');
-        foreach (['accounting.index', 'reports.index', 'approval.index', 'shu.index', 'settings.index'] as $route) {
+        foreach (['accounting.index', 'approval.index', 'shu.index', 'settings.index'] as $route) {
             $page->assertDontSee('href="'.route($route).'"', false);
         }
-        $page->assertSee('href="'.route('teller.index').'"', false);
+        $page->assertSee('href="'.route('teller.index').'"', false)->assertSee('href="'.route('disbursement.index').'"', false)
+            ->assertSee('href="'.route('reports.index').'"', false);   // laporan keuangan (hanya baca) tampil di menu kasir
 
         $this->as('admin');
         $page = $this->get('/dashboard')->assertOk();
         foreach (['accounting.index', 'reports.index', 'approval.index', 'shu.index', 'settings.index', 'teller.index'] as $route) {
             $page->assertSee('href="'.route($route).'"', false);
         }
+        $page->assertDontSee('href="'.route('disbursement.index').'"', false);   // admin tidak mencairkan
 
         // tombol aksi ikut disembunyikan untuk kasir
         $this->as('kasir');

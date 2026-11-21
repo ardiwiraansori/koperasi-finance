@@ -28,7 +28,7 @@
 <td><input form="u{{ $u->id }}" aria-label="Sandi baru untuk {{ $u->name }}" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="••••••••" style="width:100%;height:36px;border:1px solid var(--line);border-radius:8px;padding:0 8px;font-size:14px"></td>
 <td class="right" style="white-space:nowrap"><button form="u{{ $u->id }}" class="btn btn-primary small" type="submit">Simpan</button>
 @if($u->id !== auth()->id())
-<form id="x{{ $u->id }}" method="post" action="{{ route('settings.users.destroy', $u) }}" onsubmit="return confirm({{ \Illuminate\Support\Js::from('Hapus pengguna '.$u->name.'? Akunnya tidak bisa masuk lagi.') }})" style="display:inline">@csrf @method('DELETE')<button class="btn btn-primary small" type="submit" title="Hapus pengguna">Hapus</button></form>
+<form id="x{{ $u->id }}" method="post" action="{{ route('settings.users.destroy', $u) }}" data-dialog="Hapus pengguna {{ $u->name }}" data-dialog-text="Akunnya tidak bisa masuk lagi." data-dialog-ok="Hapus" data-dialog-danger style="display:inline">@csrf @method('DELETE')<button class="btn btn-primary small" type="submit" title="Hapus pengguna">Hapus</button></form>
 @endif</td>
 </tr>
 @endforeach

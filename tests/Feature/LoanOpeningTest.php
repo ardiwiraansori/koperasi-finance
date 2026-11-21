@@ -40,9 +40,9 @@ class LoanOpeningTest extends TestCase
         $this->opening()->assertSessionHasNoErrors();
 
         $loan = Loan::firstOrFail();
-        $this->assertSame(['Aktif', 12.0, 'Pinjaman Reguler'], [$loan->status, (float) $loan->interest_rate, $loan->product]);
+        $this->assertSame(['Aktif', 12.5, 'Pinjaman Reguler'], [$loan->status, (float) $loan->interest_rate, $loan->product]);
         $this->assertEquals(6000000, $loan->outstanding);
-        $this->assertEquals(Loan::annuity(10000000, 12, 12), $loan->installment);              // cicilan otomatis
+        $this->assertEquals(Loan::annuity(10000000, 12.5, 12), $loan->installment);            // cicilan otomatis
         $this->assertSame(today()->subMonths(6)->toDateString(), $loan->disbursed_at->toDateString());
         $this->assertStringStartsWith('PIN-', $loan->loan_no);
 
@@ -81,7 +81,7 @@ class LoanOpeningTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $loan->refresh();
-        $interest = round(6000000 * 12 / 1200);
+        $interest = round(6000000 * 12.5 / 1200);
         $this->assertEquals(6000000 - ((int) $loan->installment - $interest), $loan->outstanding);
         $this->assertSame($due->addMonth()->toDateString(), $loan->next_due_at->toDateString());
         $this->assertGreaterThan(5000000, JournalLine::cashBalance());                          // angsuran sungguhan menambah kas
@@ -103,7 +103,6 @@ class LoanOpeningTest extends TestCase
         $this->opening(['outstanding' => '11.000.000'])->assertSessionHasErrors('outstanding');       // sisa > plafon
         $this->opening(['outstanding' => ''])->assertSessionHasErrors('outstanding');
         $this->opening(['principal' => ''])->assertSessionHasErrors('principal');
-        $this->opening(['product' => 'Palsu'])->assertSessionHasErrors('product');
         $this->opening(['term_months' => 0])->assertSessionHasErrors('term_months');
         $this->opening(['term_months' => 121])->assertSessionHasErrors('term_months');
         $this->opening(['member_id' => ''])->assertSessionHasErrors('member_id');

@@ -21,7 +21,12 @@
         ['Tunggakan dan Kolektibilitas', 'Pinjaman lewat jatuh tempo menurut umur', '!', null],
     ],
 ])
-@foreach($groups as $group => $items)
+{{-- Kartu ke halaman akuntansi dan SHU hanya tampil bagi yang boleh membukanya (kasir hanya melihat laporan keuangan dan data operasional). --}}
+@php($canAccount = auth()->user()->allows('accounting'))
+@php($needsAccounting = fn ($route) => $route && (str_starts_with($route, 'accounting.') || $route === 'shu.index'))
+@foreach($groups as $group => $all)
+@php($items = collect($all)->reject(fn ($i) => ! $canAccount && $needsAccounting($i[3]))->values()->all())
+@continue(! $items)
 <section class="report-section"><div class="section-title"><h2>{{ $group }}</h2><span>{{ collect($items)->whereNotNull(3)->count() }} dari {{ count($items) }} tersedia</span></div>
 <div class="report-grid">
 @foreach($items as [$title, $description, $icon, $route])

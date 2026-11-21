@@ -9,18 +9,21 @@
         <div class="title-row"><h1>{{ $loan->loan_no }}</h1><span class="badge {{ $badges[$loan->display_status] ?? 'neutral' }}">{{ $loan->display_status }}</span></div>
         <p>{{ $loan->product }} · bunga {{ number_format($loan->interest_rate, 1, ',', '.') }}% per tahun · {{ $loan->term_months }} bulan</p>
         <div class="contact-row"><a class="table-link" href="{{ route('members.show', $loan->member) }}">{{ $loan->member->name }} ({{ $loan->member->member_no }})</a><span>Diajukan {{ $loan->applied_at->format('d M Y') }}</span>@if($loan->disbursed_at)<span>Dicairkan {{ $loan->disbursed_at->format('d M Y') }}</span>@endif</div>
+        @if($loan->appliedBy || $loan->approvedBy || $loan->disbursedBy)<p class="muted">@if($loan->appliedBy)Diajukan oleh {{ $loan->appliedBy->name }}@endif @if($loan->approvedBy)· Disetujui oleh {{ $loan->approvedBy->name }}@endif @if($loan->disbursedBy)· Dicairkan oleh {{ $loan->disbursedBy->name }}@endif</p>@endif
+        @if($loan->settledBy)<p class="muted">Dilunasi lewat top-up <a class="table-link" href="{{ route('loans.show', $loan->settledBy) }}">{{ $loan->settledBy->loan_no }}</a></p>@endif
+        @if($loan->settledLoans->isNotEmpty())<p class="muted">Top-up: melunasi @foreach($loan->settledLoans as $old)<a class="table-link" href="{{ route('loans.show', $old) }}">{{ $old->loan_no }}</a>{{ $loop->last ? '' : ', ' }}@endforeach</p>@endif
+        @if($payoff)@include('partials.loan-payoff', ['lines' => $payoff, 'principal' => $loan->principal])@endif
         @if($loan->status === 'Ditolak' && $loan->note)<p class="negative">Ditolak: {{ $loan->note }}</p>@endif
     </div></div>
     <div class="heading-actions no-print">
-        @if(auth()->user()->allows('loan.decide'))
-        @if($loan->status === 'Menunggu Approval')
+        @if(auth()->user()->allows('loan.decide') && $loan->status === 'Menunggu Approval')
             <form method="post" action="{{ route('loans.approve', $loan) }}">@csrf<button class="btn btn-primary" type="submit">Setujui</button></form>
-        @elseif($loan->status === 'Disetujui')
-            <form method="post" action="{{ route('loans.disburse', $loan) }}" onsubmit="return confirm({{ \Illuminate\Support\Js::from('Cairkan '.$rp($loan->principal).' ke '.$loan->member->name.'? Kas akan berkurang.') }})">@csrf<button class="btn btn-primary" type="submit">Cairkan Dana</button></form>
         @endif
-        @if(in_array($loan->status, ['Menunggu Approval', 'Disetujui'], true))
-            <form method="post" action="{{ route('loans.reject', $loan) }}" class="reject-form" onsubmit="const n = prompt('Alasan penolakan:'); if (!n) return false; this.note.value = n;">@csrf<input type="hidden" name="note"><button class="btn btn-primary" type="submit">Tolak</button></form>
+        @if(auth()->user()->allows('loan.disburse') && $loan->status === 'Disetujui')
+            <form method="post" action="{{ route('loans.disburse', $loan) }}" data-dialog="Cairkan pinjaman {{ $loan->loan_no }}" data-dialog-text="{{ 'Cairkan '.$rp($loan->principal).' ke '.$loan->member->name.'? '.($payoff ? 'Pinjaman lama dilunasi dulu; uang keluar dari kas sekitar '.$rp($loan->principal - array_sum(array_column($payoff, 'total'))).'.' : 'Kas akan berkurang.') }}" data-dialog-ok="Cairkan">@csrf<button class="btn btn-primary" type="submit">Cairkan Dana</button></form>
         @endif
+        @if(auth()->user()->allows('loan.decide') && in_array($loan->status, ['Menunggu Approval', 'Disetujui'], true))
+            <form method="post" action="{{ route('loans.reject', $loan) }}" class="reject-form" data-dialog="Tolak pengajuan {{ $loan->loan_no }}" data-dialog-text="Pengajuan {{ $loan->member->name }} tidak bisa diproses lagi setelah ditolak." data-dialog-ok="Tolak" data-dialog-reason="Alasan penolakan" data-dialog-danger>@csrf<input type="hidden" name="note"><button class="btn btn-primary" type="submit">Tolak</button></form>
         @endif
         <button class="btn btn-primary" type="button" onclick="window.print()">Cetak</button>
     </div>

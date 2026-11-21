@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Akun Saya · {{ \App\Models\Setting::cooperativeName() }}</title>
-    <link rel="stylesheet" href="{{ asset('assets/app.css') }}">
+    <link rel="stylesheet" href="{{ \App\Support\Assets::url('assets/app.css') }}">
     @include('partials.pwa')
 </head>
 <body class="portal-body">
@@ -12,7 +12,8 @@
 @php($dash = fn ($x) => filled($x) ? e($x) : '<span class="muted">—</span>')
 <header class="portal-top">
     <div class="branch-switch"><img src="{{ asset('icon-192.png') }}" alt="" width="36" height="36" style="border-radius:50%"> {{ \App\Models\Setting::cooperativeName() }}</div>
-    <form method="POST" action="{{ route('logout') }}">@csrf<button class="btn btn-primary" type="submit">Keluar</button></form>
+    <div style="display:flex;gap:8px;align-items:center"><a class="btn btn-light" href="{{ route('password.edit') }}">Ganti Kata Sandi</a>
+    <form method="POST" action="{{ route('logout') }}">@csrf<button class="btn btn-primary" type="submit">Keluar</button></form></div>
 </header>
 <main class="portal" id="main">
     <div class="page-heading"><div><span class="eyebrow">Akun Saya</span><h1>Halo, {{ $member->name }}</h1><p>{{ $member->member_no }} · {{ $member->branch }} · Anggota sejak {{ $member->joined_at->translatedFormat('d F Y') }}</p></div></div>

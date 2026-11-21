@@ -10,7 +10,7 @@
 <div class="portal-login" role="status"><strong>Akun portal siap.</strong> Berikan data ini ke anggota (hanya tampil sekali):<br>Nomor anggota <code>{{ $login['no'] }}</code> · Kata sandi <code>{{ $login['password'] }}</code></div>
 @endif
 @if(auth()->user()->allows('members.write') && $member->status === 'Aktif')
-<form class="no-print" method="POST" action="{{ route('members.account', $member) }}" style="margin-bottom:14px" onsubmit="return {{ $member->portalUser ? 'confirm(\'Atur ulang kata sandi portal anggota ini?\')' : 'true' }}">@csrf<button class="btn btn-primary" type="submit">{{ $member->portalUser ? 'Atur Ulang Kata Sandi Portal' : 'Buat Akun Portal' }}</button></form>
+<form class="no-print" method="POST" action="{{ route('members.account', $member) }}" style="margin-bottom:14px" @if($member->portalUser) data-dialog="Atur ulang kata sandi portal" data-dialog-text="Kata sandi lama anggota ini tidak berlaku lagi dan perangkatnya akan keluar. Kata sandi baru ditampilkan sekali." data-dialog-ok="Atur ulang" @endif>@csrf<button class="btn btn-primary" type="submit">{{ $member->portalUser ? 'Atur Ulang Kata Sandi Portal' : 'Buat Akun Portal' }}</button></form>
 @endif
 <div class="member-kpis">
     <div class="card"><span>Total Simpanan</span><strong>Rp {{ number_format($member->savings->sum('balance'),0,',','.') }}</strong><small>{{ $member->savings->count() }} rekening simpanan</small></div>

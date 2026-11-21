@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SavingsController;
@@ -21,6 +22,9 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
+    // Semua akun (petugas dan anggota) boleh mengganti sandinya sendiri; sandi lama dibatasi 6 percobaan per menit.
+    Route::get('/kata-sandi', [PasswordController::class, 'edit'])->name('password.edit');
+    Route::put('/kata-sandi', [PasswordController::class, 'update'])->middleware('throttle:6,1')->name('password.update');
     Route::get('/portal', [PortalController::class, 'index'])->middleware('area:portal')->name('portal.home');
 
     // Semua halaman di bawah ini khusus petugas; akun anggota dialihkan ke /portal.
@@ -71,12 +75,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/anggota/{member}/formulir', [MemberController::class, 'sheet'])->name('members.sheet');
     Route::get('/pinjaman/{loan}', [LoanController::class, 'show'])->name('loans.show');
 
-    // Keputusan: admin / pengurus.
+    // Keputusan: admin / pengurus. Pencairan uangnya oleh kasir setelah disetujui.
     Route::middleware('ability:loan.decide')->group(function () {
         Route::post('/pinjaman/{loan}/setujui', [LoanController::class, 'approve'])->name('loans.approve');
         Route::post('/pinjaman/{loan}/tolak', [LoanController::class, 'reject'])->name('loans.reject');
-        Route::post('/pinjaman/{loan}/cairkan', [LoanController::class, 'disburse'])->name('loans.disburse');
         Route::get('/approval', [LoanController::class, 'approvals'])->name('approval.index');
+    });
+    Route::middleware('ability:loan.disburse')->group(function () {
+        Route::get('/pencairan', [LoanController::class, 'disbursements'])->name('disbursement.index');
+        Route::post('/pinjaman/{loan}/cairkan', [LoanController::class, 'disburse'])->name('loans.disburse');
     });
 
     // Akuntansi, laporan, SHU: admin dan akuntan.
@@ -86,11 +93,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/akuntansi/buku-besar', [AccountingController::class, 'ledger'])->name('accounting.ledger');
         Route::get('/akuntansi/neraca-saldo', [AccountingController::class, 'trialBalance'])->name('accounting.trial');
         Route::get('/akuntansi/jenis-transaksi', [AccountingController::class, 'types'])->name('accounting.types');
+        Route::get('/shu', [ShuController::class, 'index'])->name('shu.index');
+    });
+    // Laporan keuangan: hanya baca, boleh dilihat kasir juga.
+    Route::middleware('ability:reports')->group(function () {
         Route::get('/laporan', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/laporan/neraca', [ReportController::class, 'balanceSheet'])->name('reports.balance');
         Route::get('/laporan/laba-rugi', [ReportController::class, 'incomeStatement'])->name('reports.income');
         Route::get('/laporan/arus-kas', [ReportController::class, 'cashFlow'])->name('reports.cashflow');
-        Route::get('/shu', [ShuController::class, 'index'])->name('shu.index');
     });
     Route::middleware('ability:types.edit')->group(function () {
         Route::post('/akuntansi/jenis-transaksi', [AccountingController::class, 'storeType'])->name('accounting.types.store');

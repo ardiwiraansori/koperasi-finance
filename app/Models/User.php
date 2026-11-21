@@ -14,10 +14,12 @@ class User extends Authenticatable
         'cash' => ['admin', 'kasir'],              // Kasir / Teller
         'members.write' => ['admin', 'kasir'],     // tambah dan ubah anggota
         'savings.tx' => ['admin', 'kasir'],        // setoran dan penarikan simpanan
-        'loan.apply' => ['admin', 'kasir'],        // mengajukan pinjaman
-        'loan.decide' => ['admin'],                // setujui, tolak, cairkan
+        'loan.apply' => ['kasir'],                 // mengajukan pinjaman (sementara kasir saja, sampai ada kebijakan koperasi)
+        'loan.decide' => ['admin'],                // setujui dan tolak pengajuan pinjaman
+        'loan.disburse' => ['kasir'],              // mencairkan pinjaman yang sudah disetujui (kasir memegang uang tunai)
         'opening' => ['admin', 'akuntan'],         // saldo awal kas, simpanan, pinjaman
-        'accounting' => ['admin', 'akuntan'],      // akuntansi, laporan, SHU
+        'accounting' => ['admin', 'akuntan'],      // akuntansi (jurnal, buku besar) dan SHU
+        'reports' => ['admin', 'akuntan', 'kasir'], // laporan keuangan (Neraca, Laba Rugi, Arus Kas), hanya baca
         'export' => ['admin', 'akuntan'],          // unduh daftar anggota
         'types.edit' => ['admin', 'akuntan'],      // jenis transaksi kasir
         'settings' => ['admin'],                   // pengaturan dan pengguna

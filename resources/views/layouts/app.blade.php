@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') · {{ config('app.name') }}</title>
-    <link rel="stylesheet" href="{{ asset('assets/app.css') }}">
+    <link rel="stylesheet" href="{{ \App\Support\Assets::url('assets/app.css') }}">
+    {{-- Gagal-aman: form ber-data-dialog (cairkan, hapus, atur ulang sandi, tolak) tidak terkirim sebelum app.js siap, mis. jaringan HP lambat atau skrip lama di cache. --}}
+    <script>document.addEventListener('submit', function (e) { if (e.target.dataset && e.target.dataset.dialog !== undefined && !window.dialogReady) e.preventDefault(); }, true);</script>
     @include('partials.pwa')
 </head>
 <body>
@@ -28,10 +30,11 @@
             <a class="nav-item {{ $nav('savings.*') }}" @if(request()->routeIs('savings.*')) aria-current="page" @endif href="{{ route('savings.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg></span> Simpanan</a>
             <a class="nav-item {{ $nav('loans.*') }}" @if(request()->routeIs('loans.*')) aria-current="page" @endif href="{{ route('loans.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-trend"/></svg></span> Pinjaman</a>
             @if($u->allows('cash'))<a class="nav-item {{ $nav('teller.*') }}" @if(request()->routeIs('teller.*')) aria-current="page" @endif href="{{ route('teller.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-cash"/></svg></span> Kasir / Teller</a>@endif
-            @if($u->allows('accounting'))
+            @if($u->allows('loan.disburse'))<a class="nav-item {{ $nav('disbursement.*') }}" @if(request()->routeIs('disbursement.*')) aria-current="page" @endif href="{{ route('disbursement.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg></span> Pencairan @if($waitingCash = \App\Support\Alerts::waitingDisbursements())<b class="nav-count" aria-label="{{ $waitingCash }} siap dicairkan">{{ $waitingCash }}</b>@endif</a>@endif
+            @if($u->allows('accounting') || $u->allows('reports'))
             <div class="nav-label">Keuangan</div>
-            <a class="nav-item {{ $nav('accounting.*') }}" @if(request()->routeIs('accounting.*')) aria-current="page" @endif href="{{ route('accounting.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span> Akuntansi</a>
-            <a class="nav-item {{ $nav('reports.*') }}" @if(request()->routeIs('reports.*')) aria-current="page" @endif href="{{ route('reports.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg></span> Laporan</a>
+            @if($u->allows('accounting'))<a class="nav-item {{ $nav('accounting.*') }}" @if(request()->routeIs('accounting.*')) aria-current="page" @endif href="{{ route('accounting.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span> Akuntansi</a>@endif
+            @if($u->allows('reports'))<a class="nav-item {{ $nav('reports.*') }}" @if(request()->routeIs('reports.*')) aria-current="page" @endif href="{{ route('reports.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg></span> Laporan</a>@endif
             @endif
             @if($u->allows('loan.decide') || $u->allows('accounting'))
             <div class="nav-label">Manajemen</div>
@@ -42,6 +45,8 @@
             <div class="nav-label">Sistem</div>
             <a class="nav-item {{ $nav('settings.*') }}" @if(request()->routeIs('settings.*')) aria-current="page" @endif href="{{ route('settings.index') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg></span> Pengaturan</a>
             @endif
+            <div class="nav-label">Akun</div>
+            <a class="nav-item {{ $nav('password.*') }}" @if(request()->routeIs('password.*')) aria-current="page" @endif href="{{ route('password.edit') }}"><span><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span> Ganti Kata Sandi</a>
         </nav>
         <div class="sidebar-foot">
             <div class="mini-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 2)) }}</div>
@@ -80,7 +85,7 @@
         </main>
     </div>
 </div>
-<script src="{{ asset('assets/app.js') }}"></script>
+<script src="{{ \App\Support\Assets::url('assets/app.js') }}"></script>
 @stack('scripts')
 </body>
 </html>

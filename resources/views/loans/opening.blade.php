@@ -4,7 +4,7 @@
 <a class="back-link" href="{{ route('loans.index') }}">← Kembali ke Pinjaman</a>
 <div class="page-heading"><div><p class="eyebrow">PINJAMAN</p><h1>Saldo Awal Pinjaman</h1><p>Untuk pinjaman anggota lama yang sudah berjalan sebelum aplikasi dipakai. Sisa pokok tercatat sebagai piutang dan <b>kas tidak berubah</b>.</p></div></div>
 <section class="card transaction-form" style="max-width:680px">
-<form method="post" action="{{ route('loans.opening.store') }}" novalidate data-loan-calc>
+<form method="post" action="{{ route('loans.opening.store') }}" novalidate data-loan-calc data-rate="{{ \App\Models\Loan::RATE }}">
 @csrf
 <label>Anggota <span>ketik nomor anggota atau nama</span>
 <input list="dl-anggota" data-combobox="member_id" autocomplete="off" placeholder="Contoh: Budi, AG000128" autofocus>
@@ -12,7 +12,7 @@
 <input type="hidden" name="member_id" value="{{ old('member_id') }}">@error('member_id')<small class="negative">{{ $message }}</small>@enderror</label>
 <div class="form-row">
 <label>Nomor pinjaman lama <span>opsional</span><input name="loan_no" maxlength="30" value="{{ old('loan_no') }}" placeholder="Kosongkan untuk nomor otomatis">@error('loan_no')<small class="negative">{{ $message }}</small>@enderror</label>
-<label>Produk<select name="product" required>@foreach(\App\Models\Loan::PRODUCTS as $name => $rate)<option value="{{ $name }}" data-rate="{{ $rate }}" @selected(old('product') === $name)>{{ $name }} — bunga {{ $rate }}%</option>@endforeach</select>@error('product')<small class="negative">{{ $message }}</small>@enderror</label>
+<div class="form-note" style="align-self:end">{{ \App\Models\Loan::PRODUCT }} · bunga {{ number_format(\App\Models\Loan::RATE, 1, ',', '.') }}%</div>
 </div>
 <div class="form-row">
 <label>Plafon awal<div class="money-input"><span>Rp</span><input name="principal" data-rupiah inputmode="numeric" autocomplete="off" value="{{ old('principal') }}" placeholder="0" required></div>@error('principal')<small class="negative">{{ $message }}</small>@enderror</label>

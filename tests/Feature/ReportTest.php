@@ -212,7 +212,10 @@ class ReportTest extends TestCase
         $this->get('/laporan/laba-rugi')->assertSee('Bandingkan dengan periode sebelumnya')->assertSee('Tahun lalu');
         $this->get('/laporan/arus-kas')->assertDontSee('Bandingkan dengan periode sebelumnya')->assertSee('Tahun lalu');
 
+        // Kasir boleh membaca laporan keuangan (lihat ReportAccessTest); akun anggota dialihkan ke portalnya.
         $this->actingAs(User::create(['role' => 'kasir', 'name' => 'Kasir', 'email' => 'k@x.test', 'password' => 'x']));
-        $this->get('/laporan/arus-kas')->assertForbidden();
+        $this->get('/laporan/arus-kas')->assertOk();
+        $this->actingAs(User::create(['role' => 'anggota', 'name' => 'Ani', 'email' => 'ani@anggota.local', 'password' => 'x']));
+        $this->get('/laporan/arus-kas')->assertRedirect('/portal');
     }
 }

@@ -69,12 +69,12 @@ class TellerController extends Controller
         $out = $data['category'] === 'Pengeluaran';
         [, $accountName] = $account;
         $journalNo = DB::transaction(function () use ($data, $account, $typeId, $out) {
+            $cash = $out ? Ledger::lockCash() : 0; // harus pernyataan pertama: lihat catatan di Ledger::lockCash
             if ($data['category'] === 'Saldo Awal' && Transaction::where('category', 'Saldo Awal')->exists()) {
                 throw ValidationException::withMessages(['category' => 'Saldo awal kas hanya dicatat satu kali. Selisih berikutnya catat sebagai Penerimaan atau Pengeluaran.']);
             }
-            // shortcut: dicek terhadap saldo kas saat ini tanpa kunci; dua pengeluaran besar di detik yang sama bisa sama-sama lolos, upgrade bila tim kasir banyak.
-            if ($out && $data['amount'] > JournalLine::cashBalance()) {
-                throw ValidationException::withMessages(['amount' => 'Saldo kas tidak cukup (kas Rp '.number_format(JournalLine::cashBalance(), 0, ',', '.').'). Catat saldo awal kas dulu bila belum.']);
+            if ($out && $data['amount'] > $cash) {
+                throw ValidationException::withMessages(['amount' => 'Saldo kas tidak cukup (kas Rp '.number_format($cash, 0, ',', '.').'). Catat saldo awal kas dulu bila belum.']);
             }
             $kas = Ledger::KAS;
             $lawan = $account;
@@ -102,7 +102,7 @@ class TellerController extends Controller
                 $fail("Pinjaman {$loan->loan_no} berstatus {$loan->status}, tidak bisa menerima angsuran.");
             }
             $amount = (float) $data['amount'];
-            $interest = round($loan->outstanding * $loan->interest_rate / 1200);
+            $interest = $loan->interestDue();
             $fmt = fn ($n) => 'Rp '.number_format($n, 0, ',', '.');
             if ($amount < $interest) {
                 $fail('Nominal minimal sebesar bunga bulan ini, '.$fmt($interest).'.');

@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\JournalLine;
 use App\Models\Loan;
 use App\Models\Member;
 use App\Models\Saving;
@@ -52,6 +51,7 @@ class SavingsController extends Controller
         ], ['saving_id' => 'rekening', 'amount' => 'nominal']);
 
         $result = DB::transaction(function () use ($data, $withdraw) {
+            $cash = $withdraw ? Ledger::lockCash() : 0; // harus pernyataan pertama: lihat catatan di Ledger::lockCash
             $saving = Saving::with('member')->lockForUpdate()->findOrFail($data['saving_id']);
             $fail = fn (string $msg) => throw ValidationException::withMessages(['saving_id' => $msg]);
 
@@ -68,9 +68,8 @@ class SavingsController extends Controller
                 if ($data['amount'] > $saving->balance) {
                     $fail('Saldo tidak cukup. Saldo rekening Rp '.number_format($saving->balance, 0, ',', '.').'.');
                 }
-                // shortcut: dicek terhadap saldo kas saat ini tanpa kunci; dua penarikan besar di detik yang sama bisa sama-sama lolos, upgrade bila tim kasir banyak.
-                if ($data['amount'] > JournalLine::cashBalance()) {
-                    $fail('Saldo kas tidak cukup untuk penarikan ini (kas Rp '.number_format(JournalLine::cashBalance(), 0, ',', '.').').');
+                if ($data['amount'] > $cash) {
+                    $fail('Saldo kas tidak cukup untuk penarikan ini (kas Rp '.number_format($cash, 0, ',', '.').').');
                 }
                 $saving->decrement('balance', $data['amount']);
             } else {

@@ -30,6 +30,7 @@ class MemberPortalTest extends TestCase
         $this->assertSame(8, strlen($password));
         auth()->logout();
         $this->app['auth']->forgetGuards();
+        $this->flushSession();   // keluar yang sebenarnya mengosongkan sesi; tanpa ini sidik sandi petugas tersisa dan menolak login anggota
         return $password;
     }
 

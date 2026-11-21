@@ -40,7 +40,10 @@
         <div class="approval-list">
             @if(auth()->user()->allows('loan.decide'))
             <a href="{{ route('approval.index') }}" class="approval-item"><span class="approval-icon blue">↗</span><div><strong>Pengajuan Pinjaman</strong><small>{{ $queue['pending'] ? $queue['pending'].' menunggu persetujuan' : 'Tidak ada antrean' }}</small></div><b class="{{ $queue['pending'] ? '' : 'zero' }}">{{ $queue['pending'] }}</b><i>›</i></a>
-            <a href="{{ route('approval.index') }}" class="approval-item"><span class="approval-icon green">₿</span><div><strong>Pencairan Dana</strong><small>{{ $queue['approved'] ? $queue['approved'].' siap dicairkan' : 'Tidak ada antrean' }}</small></div><b class="{{ $queue['approved'] ? '' : 'zero' }}">{{ $queue['approved'] }}</b><i>›</i></a>
+            <a href="{{ route('approval.index') }}" class="approval-item"><span class="approval-icon green">₿</span><div><strong>Pencairan Dana</strong><small>{{ $queue['approved'] ? $queue['approved'].' menunggu dicairkan kasir' : 'Tidak ada antrean' }}</small></div><b class="{{ $queue['approved'] ? '' : 'zero' }}">{{ $queue['approved'] }}</b><i>›</i></a>
+            @endif
+            @if(auth()->user()->allows('loan.disburse'))
+            <a href="{{ route('disbursement.index') }}" class="approval-item"><span class="approval-icon green">₿</span><div><strong>Pencairan Dana</strong><small>{{ $queue['approved'] ? $queue['approved'].' siap dicairkan' : 'Tidak ada antrean' }}</small></div><b class="{{ $queue['approved'] ? '' : 'zero' }}">{{ $queue['approved'] }}</b><i>›</i></a>
             @endif
             <a href="{{ route('loans.index') }}" class="approval-item"><span class="approval-icon orange">!</span><div><strong>Pinjaman Menunggak</strong><small>{{ $stats['arrearsCount'] ? 'Perlu ditagih' : 'Tidak ada tunggakan' }}</small></div><b class="{{ $stats['arrearsCount'] ? '' : 'zero' }}">{{ $stats['arrearsCount'] }}</b><i>›</i></a>
         </div>

@@ -7,6 +7,7 @@ use App\Models\JournalLine;
 use App\Models\Loan;
 use App\Models\Member;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,11 +16,15 @@ class LoanTest extends TestCase
     use RefreshDatabase;
 
     private Member $member;
+    private User $admin;
+    private User $kasir;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->actingAs(User::create(['role' => 'admin', 'name' => 'Admin', 'email' => 'a@x.test', 'password' => 'x']));
+        $this->admin = User::create(['role' => 'admin', 'name' => 'Admin', 'email' => 'a@x.test', 'password' => 'x']);
+        $this->kasir = User::create(['role' => 'kasir', 'name' => 'Kasir', 'email' => 'k@x.test', 'password' => 'x']);
+        $this->actingAs($this->admin);
         $this->member = Member::create(['member_no' => 'AG000001', 'name' => 'Budi', 'branch' => 'Pusat', 'joined_at' => '2026-01-01', 'status' => 'Aktif']);
         $this->cash(50000000);
     }
@@ -31,9 +36,18 @@ class LoanTest extends TestCase
         $j->lines()->create(['account_code' => '39101', 'account_name' => 'Ekuitas Saldo Awal', 'debit' => 0, 'credit' => $amount]);
     }
 
+    // Hanya kasir yang mengajukan. Setelah ini pengguna aktif adalah kasir; panggil $this->actingAs($this->admin) untuk menyetujui.
     private function apply(array $override = [])
     {
-        return $this->post('/pinjaman', $override + ['member_id' => $this->member->id, 'product' => 'Pinjaman Reguler', 'principal' => '10.000.000', 'term_months' => 12]);
+        $this->actingAs($this->kasir);
+        return $this->post('/pinjaman', $override + ['member_id' => $this->member->id, 'principal' => '10.000.000', 'term_months' => 12]);
+    }
+
+    // Pencairan dilakukan kasir. Setelah ini pengguna aktif adalah kasir; panggil $this->actingAs($this->admin) untuk menyetujui.
+    private function disburse(Loan $loan)
+    {
+        $this->actingAs($this->kasir);
+        return $this->post("/pinjaman/{$loan->id}/cairkan");
     }
 
     private function loan(string $status, array $attrs = []): Loan
@@ -51,10 +65,90 @@ class LoanTest extends TestCase
         $loan = Loan::firstOrFail();
         $this->assertSame(sprintf('PIN-%d-000001', now()->year), $loan->loan_no);
         $this->assertSame('Menunggu Approval', $loan->status);
-        $this->assertEquals(12, $loan->interest_rate);                       // bunga mengikuti produk, bukan input pengguna
-        $this->assertEquals(Loan::annuity(10000000, 12, 12), $loan->installment);
-        $this->assertEquals(888488, $loan->installment);
+        $this->assertEquals(12.5, $loan->interest_rate);                      // satu produk, bunga tetap 12,5%
+        $this->assertSame('Pinjaman Reguler', $loan->product);
+        $this->assertEquals(Loan::annuity(10000000, 12.5, 12), $loan->installment);
+        $this->assertEquals(890829, $loan->installment);
         $this->assertEquals(0, $loan->outstanding);                           // belum dicairkan, belum ada sisa pokok
+        $this->assertSame($this->kasir->id, $loan->applied_by);               // pengaju tercatat
+    }
+
+    public function test_product_and_rate_cannot_be_chosen_by_the_applicant(): void
+    {
+        $this->apply(['product' => 'Pinjaman Usaha', 'interest_rate' => 1])->assertSessionHasNoErrors();
+
+        $loan = Loan::firstOrFail();
+        $this->assertSame(['Pinjaman Reguler', 12.5], [$loan->product, (float) $loan->interest_rate]);
+    }
+
+    public function test_only_kasir_may_apply_and_only_admin_may_decide(): void
+    {
+        $this->get('/pinjaman/ajukan')->assertForbidden();                                         // admin tidak mengajukan
+        $this->post('/pinjaman', ['member_id' => $this->member->id, 'principal' => '10.000.000', 'term_months' => 12])->assertForbidden();
+        $this->assertSame(0, Loan::count());
+
+        $this->apply()->assertSessionHasNoErrors();
+        $loan = Loan::firstOrFail();
+        $this->post("/pinjaman/{$loan->id}/setujui")->assertForbidden();                           // kasir tidak menyetujui sendiri
+        $this->assertSame('Menunggu Approval', $loan->fresh()->status);
+    }
+
+    public function test_approver_and_disburser_are_recorded(): void
+    {
+        $this->apply();
+        $loan = Loan::firstOrFail();
+
+        $this->actingAs($this->admin);
+        $this->post("/pinjaman/{$loan->id}/setujui")->assertSessionHasNoErrors();
+        $this->post("/pinjaman/{$loan->id}/cairkan")->assertForbidden();                            // admin menyetujui, tidak mencairkan
+        $this->disburse($loan)->assertSessionHasNoErrors();                                         // kasir yang sama dengan pengaju boleh mencairkan
+
+        $loan->refresh();
+        $this->assertSame([$this->kasir->id, $this->admin->id, $this->kasir->id], [$loan->applied_by, $loan->approved_by, $loan->disbursed_by]);
+        $this->get("/pinjaman/{$loan->id}")->assertOk()->assertSee('Diajukan oleh Kasir')->assertSee('Disetujui oleh Admin')->assertSee('Dicairkan oleh Kasir');
+    }
+
+    public function test_deleting_a_user_keeps_the_loan_history(): void
+    {
+        $this->apply();
+        $loan = Loan::firstOrFail();
+
+        $this->kasir->delete();
+
+        $this->assertNull($loan->fresh()->applied_by);   // pinjaman tetap ada, hanya nama pengajunya yang kosong
+    }
+
+    public function test_duplicate_loan_number_is_retried_instead_of_failing(): void
+    {
+        // Simulasi dua pengajuan bersamaan: percobaan pertama ditolak kolom unik, yang kedua harus berhasil.
+        $attempts = 0;
+        Loan::creating(function () use (&$attempts) {
+            if (++$attempts === 1) {
+                throw new UniqueConstraintViolationException('sqlite', 'insert into loans', [], new \Exception('UNIQUE constraint failed: loans.loan_no'));
+            }
+        });
+
+        $this->apply()->assertSessionHasNoErrors();
+
+        $this->assertSame(2, $attempts);
+        $this->assertSame(1, Loan::count());   // tidak ada pinjaman ganda dari percobaan yang gagal
+    }
+
+    public function test_loan_number_failure_is_not_retried_forever(): void
+    {
+        $attempts = 0;
+        Loan::creating(function () use (&$attempts) {
+            $attempts++;
+            throw new UniqueConstraintViolationException('sqlite', 'insert into loans', [], new \Exception('UNIQUE constraint failed: loans.loan_no'));
+        });
+
+        $this->withoutExceptionHandling();
+        $this->expectException(UniqueConstraintViolationException::class);
+        try {
+            $this->apply();
+        } finally {
+            $this->assertSame(3, $attempts);   // berhenti setelah 3 kali, galat tetap dilaporkan
+        }
     }
 
     public function test_application_rules(): void
@@ -62,7 +156,6 @@ class LoanTest extends TestCase
         $this->apply(['principal' => '100.000'])->assertSessionHasErrors('principal');
         $this->apply(['term_months' => 2])->assertSessionHasErrors('term_months');
         $this->apply(['term_months' => 61])->assertSessionHasErrors('term_months');
-        $this->apply(['product' => 'Pinjaman Palsu'])->assertSessionHasErrors('product');
         $this->assertSame(0, Loan::count());
 
         $this->apply()->assertSessionHasNoErrors();
@@ -71,7 +164,7 @@ class LoanTest extends TestCase
 
         Loan::query()->delete();
         $this->loan('Aktif', ['outstanding' => 5000000, 'next_due_at' => today()->subDays(5)]);
-        $this->apply()->assertSessionHasErrors('member_id');                  // punya tunggakan
+        $this->apply()->assertSessionHasNoErrors();                           // menunggak boleh mengajukan, lewat top-up (dilunasi saat pencairan)
 
         Loan::query()->delete();
         $this->member->update(['status' => 'Nonaktif']);
@@ -81,12 +174,13 @@ class LoanTest extends TestCase
     public function test_approve_then_disburse_posts_receivable_journal_and_activates_loan(): void
     {
         $loan = $this->loan('Menunggu Approval');
-        $this->post("/pinjaman/{$loan->id}/cairkan")->assertSessionHasErrors('loan'); // belum disetujui
+        $this->disburse($loan)->assertSessionHasErrors('loan'); // belum disetujui
 
+        $this->actingAs($this->admin);
         $this->post("/pinjaman/{$loan->id}/setujui")->assertSessionHasNoErrors();
         $this->assertSame('Disetujui', $loan->fresh()->status);
 
-        $this->post("/pinjaman/{$loan->id}/cairkan")->assertSessionHasNoErrors();
+        $this->disburse($loan)->assertSessionHasNoErrors();
         $loan->refresh();
         $this->assertSame('Aktif', $loan->status);
         $this->assertEquals(10000000, $loan->outstanding);
@@ -98,7 +192,7 @@ class LoanTest extends TestCase
         $this->assertSame(['11301' => [10000000.0, 0.0], '10101' => [0.0, 10000000.0]], $lines);
         $this->assertDatabaseHas('transactions', ['loan_id' => $loan->id, 'category' => 'Pencairan', 'direction' => 'out']);
 
-        $this->post("/pinjaman/{$loan->id}/cairkan")->assertSessionHasErrors('loan'); // tidak bisa dicairkan dua kali
+        $this->disburse($loan)->assertSessionHasErrors('loan'); // tidak bisa dicairkan dua kali
         $this->assertSame(40000000.0, JournalLine::cashBalance());
     }
 
@@ -106,7 +200,7 @@ class LoanTest extends TestCase
     {
         $loan = $this->loan('Disetujui', ['principal' => 80000000, 'installment' => Loan::annuity(80000000, 12, 12)]); // kas hanya 50 juta
 
-        $this->post("/pinjaman/{$loan->id}/cairkan")->assertSessionHasErrors('loan');
+        $this->disburse($loan)->assertSessionHasErrors('loan');
         $this->assertSame('Disetujui', $loan->fresh()->status);
         $this->assertSame(50000000.0, JournalLine::cashBalance());
     }
@@ -168,10 +262,12 @@ class LoanTest extends TestCase
         $other = Member::create(['member_no' => 'AG000002', 'name' => 'Rina', 'branch' => 'Pusat', 'joined_at' => '2026-01-01', 'status' => 'Aktif']);
 
         $this->get('/pinjaman')->assertOk()->assertSee($loan->loan_no)->assertSee('Menunggu Pencairan');
-        $this->get('/pinjaman/ajukan')->assertOk()->assertSee('Pengajuan Pinjaman');
         $this->get("/pinjaman/{$loan->id}")->assertOk()->assertSee('Jadwal Angsuran')->assertSee('Setujui');
-        $this->get('/approval')->assertOk()->assertSee($loan->loan_no)->assertSee('PIN-X2')->assertSee('Cairkan');
-        $this->get('/approval')->assertSee('<b class="nav-count" aria-label="2 menunggu">2</b>', false);
+        $this->get('/approval')->assertOk()->assertSee($loan->loan_no)->assertSee('PIN-X2')->assertSee('Menunggu dicairkan kasir');
+        $this->get('/approval')->assertSee('<b class="nav-count" aria-label="1 menunggu">1</b>', false);   // admin: hanya yang perlu disetujui
         $this->assertNotNull($other);
+
+        $this->actingAs($this->kasir);
+        $this->get('/pinjaman/ajukan')->assertOk()->assertSee('Pengajuan Pinjaman')->assertSee('Pinjaman Reguler')->assertSee('12,5% per tahun');
     }
 }

@@ -27,10 +27,16 @@ class Alerts
         return (int) (self::statusCounts()[$status] ?? 0);
     }
 
-    // Pengajuan yang menunggu persetujuan + pinjaman disetujui yang menunggu pencairan (angka di menu Approval).
+    // Pengajuan yang menunggu persetujuan admin (angka di menu Approval).
     public static function waitingApprovals(): int
     {
-        return self::loanCount('Menunggu Approval') + self::loanCount('Disetujui');
+        return self::loanCount('Menunggu Approval');
+    }
+
+    // Pinjaman disetujui yang menunggu kasir menyerahkan uangnya (angka di menu Pencairan).
+    public static function waitingDisbursements(): int
+    {
+        return self::loanCount('Disetujui');
     }
 
     /** @return array<int,array{text:string,url:string,level:string}> level: danger | warning | info */
@@ -47,6 +53,9 @@ class Alerts
             $approved = self::loanCount('Disetujui');
             $pending && $add('info', "$pending pengajuan pinjaman menunggu persetujuan", route('approval.index'));
             $approved && $add('info', "$approved pinjaman disetujui, siap dicairkan", route('approval.index'));
+        }
+        if ($user->allows('loan.disburse') && ($approved = self::loanCount('Disetujui'))) {
+            $add('info', "$approved pinjaman disetujui, siap dicairkan", route('disbursement.index'));
         }
 
         // Pinjaman berjalan hanya dimuat bila memang ada (jumlahnya sudah diketahui dari hitungan status).

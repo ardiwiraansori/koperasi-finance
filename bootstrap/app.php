@@ -12,6 +12,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Sesi yang dibuka dengan sandi lama berakhir begitu sandi akun itu diganti (oleh pemiliknya atau admin).
+        $middleware->web(append: [\Illuminate\Session\Middleware\AuthenticateSession::class]);
         $middleware->alias(['ability' => \App\Http\Middleware\EnsureAbility::class, 'area' => \App\Http\Middleware\EnsureArea::class]);
         // Percayai header proxy HANYA bila diisi di .env (mis. TRUSTED_PROXIES=* di Render/Cloudflare).
         // Tanpa ini, penyerang bisa memalsukan X-Forwarded-For dan lolos dari batas percobaan login.
