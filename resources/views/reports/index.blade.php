@@ -12,7 +12,7 @@
     $groups = [
         'Keuangan' => [['Neraca', 'Posisi aset, kewajiban, dan ekuitas per tanggal', '▤', 'reports.balance'], ['Laba Rugi', 'Pendapatan, beban, dan SHU pada satu periode', '↕', 'reports.income'], ['Arus Kas', 'Kas masuk dan keluar per kegiatan', '≈', 'reports.cashflow'], ['Perubahan Ekuitas', 'Perubahan modal dan SHU berjalan', '◎', null]],
         'Akuntansi' => [['Buku Besar', 'Mutasi dan saldo per akun', '▥', 'accounting.ledger'], ['Neraca Saldo', 'Saldo debit dan kredit setiap akun', '▦', 'accounting.trial'], ['Jurnal Umum', 'Daftar jurnal beserta detail transaksi', '▤', 'accounting.index']],
-        'Operasional Koperasi' => [['Rekening Koran Simpanan', 'Mutasi dan saldo berjalan per rekening', '◫', 'savings.statement'], ['Portofolio Pinjaman', 'Daftar pinjaman, status, dan sisa pokok', '↗', 'loans.index'], ['SHU', 'Dasar dan hasil pembagian SHU per anggota', '◎', 'shu.index'], ['Tunggakan dan Kolektibilitas', 'Pinjaman lewat jatuh tempo menurut umur', '!', null]]
+        'Operasional Koperasi' => [['Rekening Koran Simpanan', 'Mutasi dan saldo berjalan per rekening', '◫', 'savings.statement'], ['Portofolio Pinjaman', 'Daftar pinjaman, status, dan sisa pokok', '↗', 'loans.index'], ['SHU', 'Dasar dan hasil pembagian SHU per anggota', '◎', 'shu.index'], ['Tunggakan dan Kolektibilitas', 'Pinjaman lewat jatuh tempo menurut umur', '!', 'reports.arrears']]
     ]
 )
     {{-- Kartu ke halaman akuntansi dan SHU hanya tampil bagi yang boleh membukanya (kasir hanya melihat laporan keuangan dan data operasional). --}}

@@ -146,6 +146,56 @@ class ReportController extends Controller
         return view('reports.cash-flow', ['from' => $from, 'to' => $to, 'flow' => $flow]);
     }
 
+    // ---- Tunggakan dan kolektibilitas -------------------------------------------------
+
+    // Umur tunggakan = hari sejak jatuh tempo terlama yang belum dibayar. Pengelompokan sama dengan Dashboard: lancar, 1-90 hari, di atas 90 hari (NPL).
+    private const AGE_BUCKETS = ['1–30 hari' => [1, 30], '31–60 hari' => [31, 60], '61–90 hari' => [61, 90], 'Lebih dari 90 hari (NPL)' => [91, PHP_INT_MAX]];
+
+    public function arrears(Request $request): View|StreamedResponse
+    {
+        $running = Loan::with('member')->whereIn('status', Loan::RUNNING)->get();
+        $portfolio = (float) $running->sum('outstanding');
+        $pct = fn (float $v) => $portfolio > 0 ? round($v / $portfolio * 100, 1) : 0.0;
+
+        // Hanya pinjaman berjalan yang lewat jatuh tempo; yang Lunas, Ditolak, atau belum dicairkan tidak ikut. Terlama di atas.
+        $rows = $running->filter(fn (Loan $l) => $l->daysOverdue() > 0)->map(function (Loan $l) {
+            $days = $l->daysOverdue();
+            $missed = $l->missedMonths();
+
+            return [
+                'loan' => $l, 'member' => $l->member, 'days' => $days, 'missed' => $missed,
+                // Perkiraan cicilan yang sudah jatuh tempo dan belum dibayar, paling banyak sebesar kewajiban pelunasan (sisa pokok + bunga):
+                // pinjaman dengan sisa kecil atau yang lewat tenor tidak boleh tampil menunggak lebih dari yang terutang.
+                'due' => min((float) $l->installment * $missed, (float) $l->outstanding + $l->payoffInterest()),
+                'outstanding' => (float) $l->outstanding,
+                'bucket' => collect(self::AGE_BUCKETS)->search(fn ($range) => $days >= $range[0] && $days <= $range[1]),
+            ];
+        })->sortByDesc('days')->values();
+
+        $overdueOutstanding = (float) $rows->sum('outstanding');
+        $groups = [['label' => 'Lancar (tidak menunggak)', 'loans' => $running->count() - $rows->count(), 'outstanding' => $portfolio - $overdueOutstanding]];
+        foreach (array_keys(self::AGE_BUCKETS) as $label) {
+            $in = $rows->where('bucket', $label);
+            $groups[] = ['label' => $label, 'loans' => $in->count(), 'outstanding' => (float) $in->sum('outstanding')];
+        }
+        $groups = array_map(fn ($g) => $g + ['pct' => $pct($g['outstanding'])], $groups);
+
+        $summary = [
+            'loans' => $rows->count(), 'members' => $rows->pluck('member.id')->unique()->count(), 'outstanding' => $overdueOutstanding,
+            'due' => (float) $rows->sum('due'), 'portfolio' => $portfolio, 'overduePct' => $pct($overdueOutstanding),
+            'npl' => $pct((float) $rows->where('bucket', array_key_last(self::AGE_BUCKETS))->sum('outstanding')),
+        ];
+
+        if ($request->boolean('export')) {
+            return Csv::download('tunggakan-'.now()->toDateString().'.csv',
+                ['Umur', 'No Pinjaman', 'No Anggota', 'Nama', 'Telepon', 'Jatuh Tempo', 'Hari Terlambat', 'Jatuh Tempo Terlewat', 'Cicilan', 'Perkiraan Tertunggak', 'Sisa Pokok'],
+                $rows->map(fn ($r) => [$r['bucket'], $r['loan']->loan_no, $r['member']->member_no, $r['member']->name, $r['member']->phone, $r['loan']->next_due_at->toDateString(),
+                    $r['days'], $r['missed'], $r['loan']->installment, $r['due'], $r['outstanding']]));
+        }
+
+        return view('reports.arrears', compact('rows', 'groups', 'summary'));
+    }
+
     // Gabungkan baris periode ini (a) dan pembanding (b) per kode akun.
     private function merge($current, $previous): array
     {

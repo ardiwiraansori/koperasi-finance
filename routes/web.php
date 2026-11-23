@@ -101,6 +101,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/laporan/neraca', [ReportController::class, 'balanceSheet'])->name('reports.balance');
             Route::get('/laporan/laba-rugi', [ReportController::class, 'incomeStatement'])->name('reports.income');
             Route::get('/laporan/arus-kas', [ReportController::class, 'cashFlow'])->name('reports.cashflow');
+            Route::get('/laporan/tunggakan', [ReportController::class, 'arrears'])->name('reports.arrears');
         });
         Route::middleware('ability:types.edit')->group(function () {
             Route::post('/akuntansi/jenis-transaksi', [AccountingController::class, 'storeType'])->name('accounting.types.store');
