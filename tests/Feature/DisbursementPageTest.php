@@ -47,7 +47,7 @@ class DisbursementPageTest extends TestCase
 
         $this->get('/pencairan')->assertOk()->assertSee('PIN-SIAP')->assertDontSee('PIN-BELUM')
             ->assertSee('Rp 10.000.000')->assertSee('Saldo kas Rp 20.000.000')->assertSee('disetujui Admin')
-            ->assertSee('<b class="nav-count" aria-label="1 siap dicairkan">1</b>', false)
+            ->assertSeeCollapsed('<b class="nav-count" aria-label="1 siap dicairkan">1</b>', false)
             ->assertSee(route('loans.disburse', $approved), false);
     }
 

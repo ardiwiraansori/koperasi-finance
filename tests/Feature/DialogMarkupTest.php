@@ -75,7 +75,7 @@ class DialogMarkupTest extends TestCase
         // Pengaman di <head>: tanpa app.js (lambat, diblokir, atau salinan lama), form ber-data-dialog tidak boleh terkirim.
         $this->user('admin');
         $guard = $this->get('/approval')->assertOk()->getContent();
-        $this->assertMatchesRegularExpression('/<head>.*document\.addEventListener\(\'submit\'.*window\.dialogReady.*e\.preventDefault\(\).*<\/head>/s', $guard);
+        $this->assertMatchesRegularExpression('/<head>.*document\.addEventListener\(\'submit\'.*window\.dialogReady.*e\s*\.preventDefault\(\).*<\/head>/s', $guard);   // \s*: perapi kode boleh memecah baris
         $this->assertStringContainsString('window.dialogReady = true;', file_get_contents(public_path('assets/app.js')));
     }
 
@@ -86,7 +86,7 @@ class DialogMarkupTest extends TestCase
             $this->markTestSkipped('Node tidak tersedia.');
         }
         $this->user('admin');
-        preg_match('/<script>(document\.addEventListener\(\'submit\'.*?)<\/script>/s', $this->get('/approval')->getContent(), $m);
+        preg_match('/<script>\s*(document\.addEventListener\(\'submit\'.*?)<\/script>/s', $this->get('/approval')->getContent(), $m);
 
         $harness = <<<'JS'
             let handler; global.window = {}; global.document = { addEventListener: (type, fn, capture) => { if (type === 'submit' && capture === true) handler = fn; } };

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Loan;
@@ -20,19 +21,19 @@ class SearchController extends Controller
         $results = null;
 
         if (mb_strlen($q) >= 2) {
-            $like = '%'.addcslashes($q, '%_\\').'%';
+            $like = '%' . addcslashes($q, '%_\\') . '%';
             $results = [
-                'members' => Member::where(fn ($w) => $w->where('name', 'like', $like)->orWhere('member_no', 'like', $like)->orWhere('nik', 'like', $like)->orWhere('phone', 'like', $like)->orWhere('email', 'like', $like))
+                'members' => Member::where(fn($w) => $w->where('name', 'like', $like)->orWhere('member_no', 'like', $like)->orWhere('nik', 'like', $like)->orWhere('phone', 'like', $like)->orWhere('email', 'like', $like))
                     ->orderBy('name')->limit(self::LIMIT)->get(),
-                'savings' => Saving::with('member')->where(fn ($w) => $w->where('account_no', 'like', $like)->orWhereHas('member', fn ($m) => $m->where('name', 'like', $like)))
+                'savings' => Saving::with('member')->where(fn($w) => $w->where('account_no', 'like', $like)->orWhereHas('member', fn($m) => $m->where('name', 'like', $like)))
                     ->orderBy('account_no')->limit(self::LIMIT)->get(),
-                'loans' => Loan::with('member')->where(fn ($w) => $w->where('loan_no', 'like', $like)->orWhereHas('member', fn ($m) => $m->where('name', 'like', $like)))
+                'loans' => Loan::with('member')->where(fn($w) => $w->where('loan_no', 'like', $like)->orWhereHas('member', fn($m) => $m->where('name', 'like', $like)))
                     ->latest('applied_at')->limit(self::LIMIT)->get(),
-                'transactions' => Transaction::cashOnly()->with('member')->where(fn ($w) => $w->where('trx_no', 'like', $like)->orWhere('description', 'like', $like))
+                'transactions' => Transaction::cashOnly()->with('member')->where(fn($w) => $w->where('trx_no', 'like', $like)->orWhere('description', 'like', $like))
                     ->latest('trx_date')->limit(self::LIMIT)->get(),
             ];
         }
 
-        return view('search.index', ['q' => $q, 'results' => $results, 'total' => $results ? collect($results)->sum(fn ($r) => $r->count()) : 0]);
+        return view('search.index', ['q' => $q, 'results' => $results, 'total' => $results ? collect($results)->sum(fn($r) => $r->count()) : 0]);
     }
 }

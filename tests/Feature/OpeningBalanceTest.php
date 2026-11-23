@@ -107,6 +107,6 @@ class OpeningBalanceTest extends TestCase
         $this->get('/simpanan/saldo-awal?anggota='.$this->member->id)->assertOk()->assertSee('SAV-0001-1')->assertSee('saldo[Wajib]', false);
 
         $this->opening(['Wajib' => '1.000.000']);
-        $this->get('/simpanan/saldo-awal?anggota='.$this->member->id)->assertSee('saldo awal tidak bisa diisi');   // Wajib terkunci
+        $this->get('/simpanan/saldo-awal?anggota='.$this->member->id)->assertSeeCollapsed('saldo awal tidak bisa diisi');   // Wajib terkunci
     }
 }

@@ -130,7 +130,7 @@ class MemberFormTest extends TestCase
         $this->post('/anggota', $this->payload())->assertSessionHasNoErrors();
         $m = Member::firstOrFail();
         $this->get("/anggota/{$m->id}")->assertOk()->assertSee('3201234567890001')->assertSee('Perempuan')->assertSee('Bogor, 17 Mei 1990')->assertSee('Pedagang')
-            ->assertSee('Budi')->assertSee('Suami')->assertSee('Cetak Formulir');
+            ->assertSee('Budi')->assertSee('Suami')->assertSeeCollapsed('Cetak Formulir');
 
         $empty = Member::create(['member_no' => 'AG000900', 'name' => 'Kosong', 'branch' => 'Pusat', 'joined_at' => '2026-01-01', 'status' => 'Aktif']);
         $this->get("/anggota/{$empty->id}")->assertOk()->assertSee('—')->assertSee('Lengkapi');
@@ -145,7 +145,7 @@ class MemberFormTest extends TestCase
         $page = $this->get("/anggota/{$m->id}/formulir")->assertOk();
         $page->assertSee('FORMULIR KEANGGOTAAN')->assertSee('Koperasi Sejahtera')->assertSee($m->member_no)->assertSee('Siti Aminah')->assertSee('3201234567890001')
             ->assertSee('Bogor, 17 Mei 1990')->assertSee('Pedagang')->assertSee('Rp 100.000')->assertSee('Saldo Simpanan Pokok')->assertSee('Anggaran Dasar')
-            ->assertSee('Anggota,')->assertSee('Pengurus / Petugas,')->assertSee('Cetak Formulir');
+            ->assertSee('Anggota,')->assertSee('Pengurus / Petugas,')->assertSeeCollapsed('Cetak Formulir');
     }
 
     public function test_sheet_for_an_incomplete_member_shows_blank_lines_not_errors(): void

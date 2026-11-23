@@ -120,7 +120,7 @@ class SearchAlertsTest extends TestCase
 
     public function test_member_profile_shows_real_risk_and_account_count_not_demo_numbers(): void
     {
-        $page = $this->get("/anggota/{$this->budi->id}")->assertOk()->assertSee("1 rekening simpanan")->assertSee("Rendah")->assertDontSee("Skor demo")->assertDontSee("86 / 100");
+        $page = $this->get("/anggota/{$this->budi->id}")->assertOk()->assertSeeCollapsed("1 rekening simpanan")->assertSee("Rendah")->assertDontSee("Skor demo")->assertDontSee("86 / 100");
 
         $this->loan("Aktif", ["outstanding" => 500000, "disbursed_at" => today()->subMonths(2), "next_due_at" => today()->subDays(45)]);
         $this->get("/anggota/{$this->budi->id}")->assertSee("Tinggi")->assertSee("Pinjaman terlambat 45 hari");

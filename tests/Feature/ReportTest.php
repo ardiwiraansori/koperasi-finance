@@ -107,7 +107,7 @@ class ReportTest extends TestCase
         $res = $this->get("/laporan/neraca?tanggal=$y-12-31&bandingkan=1")->assertOk();
         $this->assertEquals(106000000, $res->viewData('prev')['totalAssets']);                    // 31 Des tahun lalu: 100+10-4
         $this->assertEquals($last.'-12-31', $res->viewData('prevDate'));
-        $res->assertSee('Bandingkan dengan akhir tahun lalu');
+        $res->assertSeeCollapsed('Bandingkan dengan akhir tahun lalu');
     }
 
     public function test_contra_asset_reduces_total_assets(): void
