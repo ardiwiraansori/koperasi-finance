@@ -137,3 +137,16 @@ button,.btn,.nav-item,.icon-btn,.row-action{-webkit-tap-highlight-color:transpar
 .portal-login{border:2px solid #2563eb;background:#eff6ff;padding:16px 18px;margin-bottom:14px}.portal-login code{font-size:20px;font-weight:800;letter-spacing:.06em;user-select:all}
 @media (max-width:640px){.portal .member-kpis{grid-template-columns:1fr}}
 .brand-logo{width:44px;height:44px;border-radius:50%;background:#fff;flex:0 0 auto}.branch-switch img{flex:0 0 auto}
+/* Portal: kartu Kondisi Koperasi (angka gabungan). Dua kolom di layar sedang, satu kolom di HP supaya angka rupiah tidak terpotong. */
+.coop{margin:0 0 14px}.coop-head h2{font-size:16px;margin:0 0 4px}.coop-head p{margin:0 0 10px;font-size:13px;color:var(--muted);line-height:1.5}
+.coop-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.portal .coop-card{padding:15px 17px;margin:0;min-width:0}.coop-card>span{display:block;font-size:13px;color:var(--muted)}
+.coop-card>strong{display:block;font-size:clamp(18px,5vw,22px);margin:6px 0 3px;letter-spacing:-.02em;overflow-wrap:anywhere}
+.coop-card>small,.coop-card small{font-size:13px;color:#526277;line-height:1.45}.coop-card.warn>strong{color:#b91c1c}
+.coop-quality{grid-column:1/-1}.quality-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:6px 0 2px}
+.quality-head strong{font-size:clamp(22px,6.5vw,28px);letter-spacing:-.02em}.quality-head strong small{font-size:14px;color:var(--muted);margin-left:2px}.quality-head em{font-style:normal;font-size:14px;color:#334155;line-height:1.4}
+.quality-bar{display:flex;height:12px;border-radius:7px;overflow:hidden;background:#e5e7eb;margin:12px 0 10px}.quality-bar i{display:block;height:100%}
+.quality-bar .ok,.quality-legend .ok{background:#16a34a}.quality-bar .watch,.quality-legend .watch{background:#f59e0b}.quality-bar .bad,.quality-legend .bad{background:#dc2626}
+.quality-legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px;color:#334155}.quality-legend li{display:flex;align-items:center;gap:8px}.quality-legend i{width:10px;height:10px;border-radius:50%;flex:0 0 auto}.quality-legend b{margin-left:auto}
+@media (max-width:640px){.coop-kpis{grid-template-columns:1fr}.portal .coop-card{padding:16px 18px}}
+@media (min-width:641px){.quality-legend{flex-direction:row;flex-wrap:wrap;gap:6px 20px}.quality-legend b{margin-left:4px}}

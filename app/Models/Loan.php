@@ -54,6 +54,25 @@ class Loan extends Model
         return round((float) $this->outstanding * (float) $this->interest_rate / 1200);
     }
 
+    // Kualitas pinjaman berjalan menurut hari lewat jatuh tempo: lancar, 1-90 hari, >90 hari (NPL). Satu rumus untuk Dashboard petugas
+    // dan kartu "Kondisi Koperasi" di portal anggota. Hanya angka gabungan, tanpa data per anggota.
+    public static function quality($running): array
+    {
+        $sum = fn ($filter) => (float) $running->filter($filter)->sum('outstanding');
+        $good = $sum(fn ($l) => $l->daysOverdue() === 0);
+        $watch = $sum(fn ($l) => $l->daysOverdue() > 0 && $l->daysOverdue() <= 90);
+        $bad = $sum(fn ($l) => $l->daysOverdue() > 90);
+        $total = $good + $watch + $bad;
+        $pct = fn (float $v) => $total > 0 ? round($v / $total * 100, 1) : 0;
+        $score = $total > 0 ? (int) round(100 - $pct($watch + $bad)) : 100;
+
+        return [
+            'good' => $good, 'watch' => $watch, 'bad' => $bad, 'total' => $total,
+            'goodPct' => $pct($good), 'watchPct' => $pct($watch), 'npl' => $pct($bad), 'score' => $score,
+            'verdict' => $score >= 90 ? 'Kualitas pinjaman baik.' : ($score >= 75 ? 'Ada tunggakan yang perlu ditindaklanjuti.' : 'Banyak pinjaman menunggak, segera ditangani.'),
+        ];
+    }
+
     // Jumlah jatuh tempo yang sudah lewat dan belum dibayar: 1 untuk pinjaman lancar (bulan berjalan), lebih banyak bila menunggak.
     // Jatuh tempo jatuh tiap bulan mulai dari next_due_at, dihitung yang tanggalnya sudah lewat (hari ini belum lewat):
     // terlambat 95 hari berarti 4 jatuh tempo terlewat (sekitar hari ke 0, 30, 60, 90).

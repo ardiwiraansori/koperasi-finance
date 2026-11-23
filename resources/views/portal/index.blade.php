@@ -49,6 +49,42 @@
             </div>
         </div>
 
+        {{-- Angka gabungan seluruh koperasi (bukan data anggota lain). Dua kolom di tablet, satu kolom di HP. --}}
+        @php($q = $coop['quality'])
+        <section class="coop" aria-labelledby="coop-title">
+            <div class="coop-head">
+                <h2 id="coop-title">Kondisi Koperasi</h2>
+                <p>Angka gabungan seluruh anggota. Data anggota lain tidak ditampilkan.</p>
+            </div>
+            <div class="coop-kpis">
+                <div class="card coop-card"><span>Total Simpanan</span><strong>{{ $rp($coop['savings']) }}</strong><small>seluruh
+                        anggota</small></div>
+                <div class="card coop-card"><span>Pinjaman Beredar</span><strong>{{ $rp($coop['loans']) }}</strong><small>{{ $coop['loanCount'] }}
+                        pinjaman berjalan</small></div>
+                <div class="card coop-card {{ $coop['arrearsCount'] ? 'warn' : '' }}"><span>Tunggakan</span><strong>{{ $rp($coop['arrears']) }}</strong><small>
+                        @if ($coop['arrearsCount'])
+                            {{ $coop['arrearsCount'] }} pinjaman · {{ $coop['arrearsPct'] }}% dari pinjaman beredar
+                        @else
+                            Tidak ada tunggakan
+                        @endif
+                    </small></div>
+                <div class="card coop-card coop-quality">
+                    <span>Kualitas Pinjaman</span>
+                    <div class="quality-head"><strong>{{ $q['score'] }}<small>/100</small></strong><em>{{ $q['verdict'] }}</em></div>
+                    <div class="quality-bar" role="img"
+                        aria-label="Lancar {{ $q['goodPct'] }} persen, terlambat 1 sampai 90 hari {{ $q['watchPct'] }} persen, terlambat di atas 90 hari {{ $q['npl'] }} persen">
+                        <i class="ok" style="width:{{ $q['goodPct'] }}%"></i><i class="watch"
+                            style="width:{{ $q['watchPct'] }}%"></i><i class="bad" style="width:{{ $q['npl'] }}%"></i>
+                    </div>
+                    <ul class="quality-legend">
+                        <li><i class="ok"></i>Lancar <b>{{ $q['goodPct'] }}%</b></li>
+                        <li><i class="watch"></i>Terlambat 1–90 hari <b>{{ $q['watchPct'] }}%</b></li>
+                        <li><i class="bad"></i>Terlambat di atas 90 hari (bermasalah) <b>{{ $q['npl'] }}%</b></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
         <section class="card">
             <div class="card-head">
                 <div>
